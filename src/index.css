@@ -2,95 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* SmarAnandh Design System
+   A warm, accessible design for elderly Indian users
+   Philosophy: Physicality, warmth, one decision per screen
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core Palette - Warm Indian Aesthetic */
+    --background: 30 100% 97%; /* #FFF8F0 Sandalwood Cream */
+    --foreground: 0 0% 10%; /* #1A1A1A Carbon Black */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 30 60% 98%;
+    --card-foreground: 0 0% 10%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 30 100% 97%;
+    --popover-foreground: 0 0% 10%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary - Saffron/Marigold */
+    --primary: 30 100% 50%; /* #FF9933 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Success - Deep Sage Green */
+    --success: 122 47% 33%; /* #2E7D32 */
+    --success-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Secondary - Warm Neutral */
+    --secondary: 30 30% 94%;
+    --secondary-foreground: 0 0% 10%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 30 20% 90%;
+    --muted-foreground: 0 0% 43%; /* #6D6D6D */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 30 80% 92%;
+    --accent-foreground: 30 100% 35%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Alert - Deep Red */
+    --destructive: 0 75% 50%; /* #D32F2F */
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --border: 30 30% 85%;
+    --input: 30 30% 88%;
+    --ring: 30 100% 50%;
 
-    --sidebar-background: 0 0% 98%;
+    --radius: 1rem;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Custom tokens for SmarAnandh */
+    --pulse-success: 122 47% 33%;
+    --pulse-action: 30 100% 50%;
+    --shadow-soft: 0 4px 20px -4px hsl(30 50% 20% / 0.15);
+    --shadow-pressed: 0 2px 8px -2px hsl(30 50% 20% / 0.2);
+    --shadow-elevated: 0 8px 32px -8px hsl(30 50% 20% / 0.2);
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar defaults */
+    --sidebar-background: 30 60% 98%;
+    --sidebar-foreground: 0 0% 26%;
+    --sidebar-primary: 0 0% 10%;
+    --sidebar-primary-foreground: 30 100% 97%;
+    --sidebar-accent: 30 40% 95%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 30 30% 91%;
+    --sidebar-ring: 30 100% 50%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 20 15% 8%;
+    --foreground: 30 20% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 20 15% 12%;
+    --card-foreground: 30 20% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 20 15% 10%;
+    --popover-foreground: 30 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 30 100% 55%;
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --success: 122 47% 40%;
+    --success-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary: 20 15% 18%;
+    --secondary-foreground: 30 20% 95%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 20 15% 20%;
+    --muted-foreground: 30 15% 60%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 30 40% 20%;
+    --accent-foreground: 30 80% 70%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 15% 20%;
+    --input: 20 15% 20%;
+    --ring: 30 80% 60%;
+
+    --sidebar-background: 20 15% 10%;
+    --sidebar-foreground: 30 20% 90%;
+    --sidebar-primary: 30 80% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 20 15% 16%;
+    --sidebar-accent-foreground: 30 20% 90%;
+    --sidebar-border: 20 15% 16%;
+    --sidebar-ring: 30 100% 55%;
   }
 }
 
@@ -99,7 +113,114 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground;
+  html {
+    font-size: 18px;
+    -webkit-tap-highlight-color: transparent;
   }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Poppins', 'Mukta', system-ui, sans-serif;
+    line-height: 1.6;
+  }
+
+  /* Accessibility: Focus states for keyboard navigation */
+  :focus-visible {
+    @apply outline-none ring-4 ring-primary/50 ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Large tactile button - feels like a physical object */
+  .btn-tactile {
+    @apply relative overflow-hidden rounded-2xl font-semibold text-xl;
+    @apply transition-all duration-150 ease-out;
+    @apply active:scale-[0.97] active:shadow-none;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .btn-tactile:active {
+    box-shadow: var(--shadow-pressed);
+  }
+
+  /* Primary action button - Saffron warmth */
+  .btn-primary-action {
+    @apply btn-tactile bg-primary text-primary-foreground;
+    @apply min-h-[80px] min-w-[160px] px-8 py-5;
+  }
+
+  /* Success confirmation button - Sage green */
+  .btn-success-action {
+    @apply btn-tactile bg-success text-success-foreground;
+    @apply min-h-[80px] min-w-[160px] px-8 py-5;
+  }
+
+  /* Alert/SOS button - Deep red */
+  .btn-alert-action {
+    @apply btn-tactile bg-destructive text-destructive-foreground;
+    @apply min-h-[80px] min-w-[160px] px-8 py-5;
+  }
+
+  /* Neutral/cancel button */
+  .btn-neutral {
+    @apply btn-tactile bg-muted text-muted-foreground;
+    @apply min-h-[80px] min-w-[160px] px-8 py-5;
+  }
+
+  /* Warm card container */
+  .card-warm {
+    @apply bg-card rounded-2xl p-6;
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* Status pulse animation */
+  .pulse-status {
+    @apply relative inline-flex;
+  }
+
+  .pulse-status::before {
+    content: '';
+    @apply absolute inset-0 rounded-full animate-ping opacity-30;
+    background: inherit;
+  }
+
+  /* Navigation tile - large touch target */
+  .nav-tile {
+    @apply card-warm flex flex-col items-center justify-center gap-4;
+    @apply min-h-[140px] transition-all duration-150;
+    @apply active:scale-[0.97];
+  }
+
+  .nav-tile:active {
+    box-shadow: var(--shadow-pressed);
+  }
+}
+
+/* Custom animations */
+@keyframes gentle-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.9; }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes success-pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+.animate-success-pop {
+  animation: success-pop 0.4s ease-out;
 }
