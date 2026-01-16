@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
-import { ReactNode } from "react";
+import { ReactNode, ButtonHTMLAttributes } from "react";
 
-interface TactileButtonProps {
+interface TactileButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
   children: ReactNode;
   onClick?: () => void;
   variant?: "primary" | "success" | "alert" | "neutral";
