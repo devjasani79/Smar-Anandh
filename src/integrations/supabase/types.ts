@@ -399,11 +399,14 @@ export type Database = {
           chronic_conditions: string[] | null
           created_at: string | null
           emergency_contacts: Json | null
+          family_pin: string | null
+          guardian_email: string | null
           id: string
           language: string | null
           name: string
           nudge_frequency: string | null
           photo_url: string | null
+          preferred_name: string | null
           updated_at: string | null
           user_id: string | null
         }
@@ -411,11 +414,14 @@ export type Database = {
           chronic_conditions?: string[] | null
           created_at?: string | null
           emergency_contacts?: Json | null
+          family_pin?: string | null
+          guardian_email?: string | null
           id?: string
           language?: string | null
           name: string
           nudge_frequency?: string | null
           photo_url?: string | null
+          preferred_name?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -423,11 +429,14 @@ export type Database = {
           chronic_conditions?: string[] | null
           created_at?: string | null
           emergency_contacts?: Json | null
+          family_pin?: string | null
+          guardian_email?: string | null
           id?: string
           language?: string | null
           name?: string
           nudge_frequency?: string | null
           photo_url?: string | null
+          preferred_name?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -467,6 +476,16 @@ export type Database = {
       is_guardian_of: {
         Args: { _senior_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_family_pin: {
+        Args: { input_pin: string }
+        Returns: {
+          guardian_id: string
+          photo_url: string
+          preferred_name: string
+          senior_id: string
+          senior_name: string
+        }[]
       }
     }
     Enums: {
