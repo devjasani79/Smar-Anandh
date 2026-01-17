@@ -12,15 +12,16 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { PinAuthProvider } from "@/contexts/PinAuthContext";
 
 // Pages
-import Darshani from "./pages/Darshani";
+import Landing from "./pages/Landing";
+import PinAuth from "./pages/PinAuth";
+import SeniorApp from "./pages/SeniorApp";
 import Dawa from "./pages/Dawa";
 import Santosh from "./pages/Santosh";
 import Madad from "./pages/Madad";
 import Parivaar from "./pages/Parivaar";
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 // Guardian Pages
@@ -34,19 +35,22 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+    <PinAuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth" element={<PinAuth />} />
+            
             {/* Senior PWA Routes */}
-            <Route path="/" element={<Darshani />} />
+            <Route path="/app" element={<SeniorApp />} />
             <Route path="/dawa" element={<Dawa />} />
             <Route path="/santosh" element={<Santosh />} />
             <Route path="/madad" element={<Madad />} />
             <Route path="/parivaar" element={<Parivaar />} />
-            <Route path="/auth" element={<Auth />} />
             
             {/* Guardian Dashboard Routes */}
             <Route path="/guardian" element={<GuardianLayout />}>
@@ -61,7 +65,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </AuthProvider>
+    </PinAuthProvider>
   </QueryClientProvider>
 );
 
