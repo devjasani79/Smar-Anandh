@@ -11,18 +11,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { PinAuthProvider } from "@/contexts/PinAuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 // Pages
 import Landing from "./pages/Landing";
-import PinAuth from "./pages/PinAuth";
-import SeniorApp from "./pages/SeniorApp";
-import Dawa from "./pages/Dawa";
-import Santosh from "./pages/Santosh";
-import Madad from "./pages/Madad";
-import Parivaar from "./pages/Parivaar";
 import NotFound from "./pages/NotFound";
+
+// Auth Pages
+import GuardianAuth from "./pages/auth/GuardianAuth";
+import SeniorAuth from "./pages/auth/SeniorAuth";
 
 // Guardian Pages
 import GuardianLayout from "./pages/guardian/GuardianLayout";
@@ -30,12 +28,17 @@ import GuardianHome from "./pages/guardian/GuardianHome";
 import GuardianMedicines from "./pages/guardian/GuardianMedicines";
 import GuardianJoy from "./pages/guardian/GuardianJoy";
 import GuardianSettings from "./pages/guardian/GuardianSettings";
+import GuardianOnboarding from "./pages/guardian/GuardianOnboarding";
+
+// Senior Pages
+import SeniorHome from "./pages/senior/SeniorHome";
+import SeniorDawa from "./pages/senior/SeniorDawa";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <PinAuthProvider>
+    <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -43,16 +46,12 @@ const App = () => (
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<PinAuth />} />
             
-            {/* Senior PWA Routes */}
-            <Route path="/app" element={<SeniorApp />} />
-            <Route path="/dawa" element={<Dawa />} />
-            <Route path="/santosh" element={<Santosh />} />
-            <Route path="/madad" element={<Madad />} />
-            <Route path="/parivaar" element={<Parivaar />} />
+            {/* Auth Routes */}
+            <Route path="/auth" element={<GuardianAuth />} />
+            <Route path="/senior/auth" element={<SeniorAuth />} />
             
-            {/* Guardian Dashboard Routes */}
+            {/* Guardian Routes */}
             <Route path="/guardian" element={<GuardianLayout />}>
               <Route index element={<GuardianHome />} />
               <Route path="medicines" element={<GuardianMedicines />} />
@@ -60,12 +59,24 @@ const App = () => (
               <Route path="vitals" element={<GuardianHome />} />
               <Route path="settings" element={<GuardianSettings />} />
             </Route>
+            <Route path="/guardian/onboarding" element={<GuardianOnboarding />} />
+            
+            {/* Senior Routes */}
+            <Route path="/app" element={<SeniorHome />} />
+            <Route path="/senior/dawa" element={<SeniorDawa />} />
+            <Route path="/senior/santosh" element={<SeniorHome />} />
+            <Route path="/senior/madad" element={<SeniorHome />} />
+            <Route path="/senior/parivaar" element={<SeniorHome />} />
+            
+            {/* Legacy redirects */}
+            <Route path="/dawa" element={<Navigate to="/senior/dawa" replace />} />
+            <Route path="/santosh" element={<Navigate to="/senior/santosh" replace />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </PinAuthProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

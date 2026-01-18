@@ -371,6 +371,7 @@ export type Database = {
           full_name: string
           id: string
           language: string | null
+          phone: string | null
           updated_at: string | null
           user_id: string
         }
@@ -380,6 +381,7 @@ export type Database = {
           full_name: string
           id?: string
           language?: string | null
+          phone?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -389,6 +391,7 @@ export type Database = {
           full_name?: string
           id?: string
           language?: string | null
+          phone?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -465,6 +468,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_guardian_seniors: {
+        Args: { guardian_user_id: string }
+        Returns: {
+          is_primary: boolean
+          language: string
+          photo_url: string
+          preferred_name: string
+          senior_id: string
+          senior_name: string
+        }[]
+      }
       get_senior_id_for_user: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -484,6 +498,17 @@ export type Database = {
           photo_url: string
           preferred_name: string
           senior_id: string
+          senior_name: string
+        }[]
+      }
+      validate_family_pin_with_phone: {
+        Args: { guardian_phone: string; input_pin: string }
+        Returns: {
+          guardian_id: string
+          photo_url: string
+          preferred_name: string
+          senior_id: string
+          senior_language: string
           senior_name: string
         }[]
       }
