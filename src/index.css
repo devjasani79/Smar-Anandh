@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lora&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -63,6 +65,8 @@
     --sidebar-accent-foreground: 0 0% 10%;
     --sidebar-border: 30 30% 91%;
     --sidebar-ring: 30 100% 50%;
+    --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
   }
 
   .dark {
@@ -105,6 +109,8 @@
     --sidebar-accent-foreground: 30 20% 90%;
     --sidebar-border: 20 15% 16%;
     --sidebar-ring: 30 100% 55%;
+    --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
   }
 }
 
