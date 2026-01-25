@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Eye, EyeOff, Phone, Mail, User, ArrowLeft } from 'lucide-react';
@@ -15,7 +15,7 @@ const phoneSchema = z.string().min(10, 'Please enter a valid phone number');
 
 export default function GuardianAuth() {
   const navigate = useNavigate();
-  const { user, loading, signUp, signIn, resetPassword } = useAuth();
+  const { user, loading, linkedSeniors, signUp, signIn, resetPassword } = useAuth();
   
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -25,13 +25,22 @@ export default function GuardianAuth() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Track if we've already handled redirect to prevent loops
+  const hasRedirected = useRef(false);
 
-  // Redirect if already logged in
+  // Redirect if already logged in - only once
   useEffect(() => {
-    if (user && !loading) {
-      navigate('/guardian');
+    if (!loading && user && !hasRedirected.current) {
+      hasRedirected.current = true;
+      // Check if user has linked seniors - if not, send to onboarding
+      if (linkedSeniors.length === 0) {
+        navigate('/guardian/onboarding', { replace: true });
+      } else {
+        navigate('/guardian', { replace: true });
+      }
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, linkedSeniors.length, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -89,7 +98,7 @@ export default function GuardianAuth() {
           }
         } else {
           toast.success('Welcome back!');
-          navigate('/guardian');
+          // Navigation will be handled by useEffect when user state updates
         }
       } else if (mode === 'signup') {
         const { error } = await signUp(email, password, fullName, phone);
@@ -101,7 +110,8 @@ export default function GuardianAuth() {
           }
         } else {
           toast.success('Account created! Please complete your setup.');
-          navigate('/guardian/onboarding');
+          hasRedirected.current = true;
+          navigate('/guardian/onboarding', { replace: true });
         }
       } else if (mode === 'forgot') {
         const { error } = await resetPassword(email);
@@ -117,7 +127,17 @@ export default function GuardianAuth() {
     }
   };
 
+  // Show loading state while checking auth
   if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // If user is logged in, show loading while redirecting
+  if (user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />

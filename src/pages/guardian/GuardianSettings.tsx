@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   User,
@@ -13,7 +13,7 @@ import {
   Bell
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { TactileButton } from '@/components/TactileButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,8 +35,7 @@ interface SeniorDetails {
 }
 
 export default function GuardianSettings() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshLinkedSeniors } = useAuth();
   const { selectedSenior, linkedSeniors } = useOutletContext<ContextType>();
   const [senior, setSenior] = useState<SeniorDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +63,7 @@ export default function GuardianSettings() {
     if (!selectedSenior) return;
     
     setLoading(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('seniors')
       .select('*')
       .eq('id', selectedSenior)
@@ -129,6 +128,7 @@ export default function GuardianSettings() {
       toast.error('Failed to save changes');
     } else {
       toast.success('Settings saved!');
+      await refreshLinkedSeniors();
     }
     setSaving(false);
   };
@@ -182,8 +182,7 @@ export default function GuardianSettings() {
         chronicConditions: '',
         emergencyContacts: [{ name: '', phone: '', relationship: '' }],
       });
-      // Refresh page to show new senior
-      window.location.reload();
+      await refreshLinkedSeniors();
     }
     setSaving(false);
   };
@@ -544,7 +543,12 @@ export default function GuardianSettings() {
                 onClick={handleAddNewSenior}
                 disabled={saving}
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Add Senior'}
+                {saving ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-5 h-5 mr-2" />
+                )}
+                Add Senior
               </TactileButton>
             </div>
           </motion.div>
