@@ -12,7 +12,7 @@ import {
   X,
   User
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { GlowIcon } from '@/components/GlowIcon';
 import { supabase } from '@/integrations/supabase/client';
 
