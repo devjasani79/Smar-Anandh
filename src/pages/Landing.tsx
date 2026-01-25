@@ -1,6 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, Shield, Bell, Users, ChevronRight, Sparkles } from 'lucide-react';
+import { Heart, Shield, Bell, Users, ChevronRight, Flower2, Music, PhoneCall } from 'lucide-react';
+
+// Custom Diya Logo Component to match your favicon
+const DiyaLogo = ({ className = "w-10 h-10" }) => (
+  <div className={`${className} rounded-xl bg-primary flex items-center justify-center relative overflow-hidden shadow-inner`}>
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/3 w-4 h-6 bg-white rounded-full blur-[2px] opacity-30" />
+    <Heart className="w-6 h-6 text-primary-foreground fill-primary-foreground" />
+  </div>
+);
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -9,68 +17,52 @@ export default function Landing() {
     {
       icon: Bell,
       title: 'Dawa Reminders',
-      description: 'Gentle, non-intrusive medicine reminders with visual pill identification'
+      description: 'Clear, timely alerts for medicines with visual instructions that even children or elders can follow.'
     },
     {
-      icon: Heart,
-      title: 'Khushi Activities',
-      description: 'Curated entertainment - bhajans, puzzles, and memory games'
+      icon: Music,
+      title: 'Khushi & Bhajans',
+      description: 'A curated joy-center featuring old classics, spiritual music, and memory games.'
     },
     {
-      icon: Users,
+      icon: PhoneCall,
       title: 'Parivaar Connect',
-      description: 'One-tap video calls to family with large, easy-to-use buttons'
+      description: 'Zero-confusion video calling. Just tap the face of the family member to start a call.'
     },
     {
       icon: Shield,
       title: 'Guardian Dashboard',
-      description: 'Real-time updates and care management for family members'
+      description: 'Complete peace of mind. Monitor health vitals and pill compliance from anywhere in the world.'
     }
   ];
 
   const steps = [
-    { number: '1', title: 'Set Up', description: 'Guardian completes a quick KYC and sets a Family PIN' },
-    { number: '2', title: 'Enter PIN', description: 'Senior or Guardian enters the unified 4-digit Family PIN' },
-    { number: '3', title: 'Stay Connected', description: 'Seniors enjoy companionship, Guardians stay informed' }
+    { number: '1', title: 'Guardian Setup', description: 'Download the app and create a profile for your loved one.' },
+    { number: '2', title: 'Set Family PIN', description: 'Create a simple 4-digit PIN that replaces complex passwords for the senior.' },
+    { number: '3', title: 'Install & Enjoy', description: 'Log in on the senior’s tablet or phone. Care begins instantly.' }
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background selection:bg-primary/20">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span 
-              className="text-xl font-bold text-foreground"
-              style={{ fontFamily: 'Playfair Display, serif' }}
-            >
+          <div className="flex items-center gap-3">
+            <DiyaLogo className="w-10 h-10" />
+            <span className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
               SmarAnandh
             </span>
           </div>
-          <div className="flex items-center gap-6">
-            <a 
-              href="#features" 
-              className="hidden md:block text-muted-foreground hover:text-foreground transition-colors"
-              style={{ fontFamily: 'Nunito, sans-serif' }}
-            >
-              Features
-            </a>
-            <a 
-              href="#how-it-works" 
-              className="hidden md:block text-muted-foreground hover:text-foreground transition-colors"
-              style={{ fontFamily: 'Nunito, sans-serif' }}
-            >
-              How It Works
-            </a>
+          <div className="flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-8 text-sm font-medium">
+              <a href="#features" className="text-muted-foreground hover:text-primary transition-colors">Features</a>
+              <a href="#how-it-works" className="text-muted-foreground hover:text-primary transition-colors">Process</a>
+            </div>
             <motion.button
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/auth')}
-              className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold
-                         shadow-lg hover:shadow-xl transition-all"
-              style={{ fontFamily: 'Nunito, sans-serif' }}
+              className="px-6 py-2 rounded-full bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all"
             >
               Login
             </motion.button>
@@ -79,87 +71,65 @@ export default function Landing() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
+      <section className="pt-40 pb-24 px-6 relative overflow-hidden">
+        <div className="absolute top-20 right-[-10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -z-10" />
         <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
             >
-              <h1 
-                className="text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 leading-tight"
-                style={{ fontFamily: 'Playfair Display, serif' }}
-              >
-                A digital companion that cares with{' '}
-                <span className="text-primary">dignity</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-bold mb-6">
+                <Flower2 className="w-4 h-4" /> Trusted by 1000+ Indian Families
+              </div>
+              <h1 className="text-5xl md:text-7xl text-foreground mb-8 leading-[1.1] font-bold" style={{ fontFamily: 'Playfair Display, serif' }}>
+                Distance shouldn't mean <span className="text-primary italic">disconnection.</span>
               </h1>
-              <p 
-                className="text-lg text-muted-foreground mb-8 leading-relaxed"
-                style={{ fontFamily: 'Nunito, sans-serif' }}
-              >
-                SmarAnandh brings peace of mind to families by keeping seniors connected, 
-                entertained, and cared for — all with the warmth of a family companion.
+              <p className="text-xl text-muted-foreground mb-10 max-w-lg leading-relaxed">
+                The first digital companion designed with the warmth of Indian values and the simplicity seniors deserve.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
+              <div className="flex flex-wrap gap-4">
+                <button
                   onClick={() => navigate('/auth')}
-                  className="px-8 py-4 rounded-2xl bg-primary text-primary-foreground text-lg font-semibold
-                             shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
-                  style={{ fontFamily: 'Nunito, sans-serif' }}
+                  className="px-8 py-4 rounded-2xl bg-primary text-primary-foreground text-lg font-bold shadow-xl hover:bg-primary/90 transition-all flex items-center gap-2"
                 >
-                  Get Started
-                  <ChevronRight className="w-5 h-5" />
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="px-8 py-4 rounded-2xl bg-secondary text-secondary-foreground text-lg font-semibold
-                             transition-all"
-                  style={{ fontFamily: 'Nunito, sans-serif' }}
-                >
-                  Learn More
-                </motion.button>
+                  Start Caring Today <ChevronRight className="w-5 h-5" />
+                </button>
               </div>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
               className="relative"
             >
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-primary/20 to-success/20 p-8">
-                <div className="w-full h-full rounded-2xl bg-card shadow-2xl flex items-center justify-center overflow-hidden">
-                  <div className="text-center p-8">
-                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Heart className="w-12 h-12 text-primary" />
-                    </div>
-                    <p 
-                      className="text-2xl text-foreground italic"
-                      style={{ fontFamily: 'Playfair Display, serif' }}
+              <div className="relative z-10 rounded-[2.5rem] border-8 border-card bg-card shadow-2xl overflow-hidden aspect-[4/3] flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary">
+                 <div className="text-center">
+                    <motion.div 
+                       animate={{ filter: ["drop-shadow(0 0 10px rgba(255,159,28,0.4))", "drop-shadow(0 0 20px rgba(255,159,28,0.2))"] }}
+                       transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
                     >
-                      "Because being away doesn't mean being disconnected."
+                      <DiyaLogo className="w-32 h-32 mx-auto mb-6 scale-125" />
+                    </motion.div>
+                    <p className="text-3xl font-bold italic text-primary" style={{ fontFamily: 'Playfair Display, serif' }}>
+                      "SmarAnandh"
                     </p>
-                  </div>
-                </div>
+                    <p className="text-muted-foreground mt-2">Connecting Generations</p>
+                 </div>
               </div>
-              
-              {/* Floating elements */}
-              <motion.div
-                animate={{ y: [-5, 5, -5] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="absolute -top-4 -right-4 w-20 h-20 rounded-2xl bg-success/90 flex items-center justify-center shadow-xl"
+              {/* Floating Stat Cards */}
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity }}
+                className="absolute -top-6 -left-6 bg-white p-4 rounded-2xl shadow-xl flex items-center gap-3 border border-border"
               >
-                <span className="text-3xl">💊</span>
-              </motion.div>
-              <motion.div
-                animate={{ y: [5, -5, 5] }}
-                transition={{ duration: 3.5, repeat: Infinity }}
-                className="absolute -bottom-4 -left-4 w-16 h-16 rounded-2xl bg-primary/90 flex items-center justify-center shadow-xl"
-              >
-                <span className="text-2xl">😊</span>
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">✓</div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Morning Dawa</p>
+                  <p className="text-sm font-bold">Taken at 8:30 AM</p>
+                </div>
               </motion.div>
             </motion.div>
           </div>
@@ -167,148 +137,54 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-6 bg-secondary/30">
-        <div className="container mx-auto max-w-6xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 
-              className="text-3xl md:text-4xl text-foreground mb-4"
-              style={{ fontFamily: 'Playfair Display, serif' }}
-            >
-              Care designed for <span className="text-primary">dignity</span>
-            </h2>
-            <p 
-              className="text-lg text-muted-foreground max-w-2xl mx-auto"
-              style={{ fontFamily: 'Nunito, sans-serif' }}
-            >
-              Every feature is crafted with seniors in mind — large buttons, clear text, 
-              and a warm, familiar interface.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-card rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                  <feature.icon className="w-7 h-7 text-primary" />
+      <section id="features" className="py-24 bg-secondary/20">
+        <div className="container mx-auto px-6 max-w-6xl text-center">
+          <h2 className="text-4xl font-bold mb-16" style={{ fontFamily: 'Playfair Display, serif' }}>
+            Built for <span className="underline decoration-primary/30">Accessibility</span>
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {features.map((f, i) => (
+              <div key={i} className="bg-card p-8 rounded-3xl shadow-sm hover:shadow-md transition-all border border-border/50 text-left group">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                  <f.icon className="w-7 h-7" />
                 </div>
-                <h3 
-                  className="text-xl font-bold text-foreground mb-2"
-                  style={{ fontFamily: 'Nunito, sans-serif' }}
-                >
-                  {feature.title}
-                </h3>
-                <p 
-                  className="text-muted-foreground"
-                  style={{ fontFamily: 'Nunito, sans-serif' }}
-                >
-                  {feature.description}
-                </p>
-              </motion.div>
+                <h3 className="text-xl font-bold mb-3">{f.title}</h3>
+                <p className="text-muted-foreground leading-relaxed text-sm">{f.description}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6">
-        <div className="container mx-auto max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 
-              className="text-3xl md:text-4xl text-foreground mb-4"
-              style={{ fontFamily: 'Playfair Display, serif' }}
-            >
-              Simple as <span className="text-primary">1-2-3</span>
-            </h2>
-          </motion.div>
-
-          <div className="space-y-8">
-            {steps.map((step, index) => (
-              <motion.div
-                key={step.number}
-                initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-6"
-              >
-                <div className="w-16 h-16 shrink-0 rounded-full bg-primary text-primary-foreground 
-                               flex items-center justify-center text-2xl font-bold shadow-lg"
-                     style={{ fontFamily: 'Playfair Display, serif' }}>
-                  {step.number}
-                </div>
-                <div>
-                  <h3 
-                    className="text-xl font-bold text-foreground mb-1"
-                    style={{ fontFamily: 'Nunito, sans-serif' }}
-                  >
-                    {step.title}
-                  </h3>
-                  <p 
-                    className="text-muted-foreground"
-                    style={{ fontFamily: 'Nunito, sans-serif' }}
-                  >
-                    {step.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-primary/10 to-success/10">
-        <div className="container mx-auto max-w-2xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 
-              className="text-3xl md:text-4xl text-foreground mb-6"
-              style={{ fontFamily: 'Playfair Display, serif' }}
-            >
-              Ready to bring peace of mind to your family?
-            </h2>
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => navigate('/auth')}
-              className="px-10 py-5 rounded-2xl bg-primary text-primary-foreground text-xl font-semibold
-                         shadow-xl hover:shadow-2xl transition-all"
-              style={{ fontFamily: 'Nunito, sans-serif' }}
-            >
-              Start Free Today
-            </motion.button>
-          </motion.div>
-        </div>
+      {/* Process Section */}
+      <section id="how-it-works" className="py-24">
+         <div className="container mx-auto px-6 max-w-4xl text-center">
+            <h2 className="text-4xl font-bold mb-20" style={{ fontFamily: 'Playfair Display, serif' }}>How it works</h2>
+            <div className="relative">
+               <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border -z-10 hidden md:block" />
+               <div className="grid md:grid-cols-3 gap-12">
+                  {steps.map((s, i) => (
+                    <div key={i} className="bg-background">
+                       <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold shadow-lg ring-8 ring-background">
+                          {s.number}
+                       </div>
+                       <h4 className="text-xl font-bold mb-2">{s.title}</h4>
+                       <p className="text-muted-foreground text-sm">{s.description}</p>
+                    </div>
+                  ))}
+               </div>
+            </div>
+         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-border">
-        <div className="container mx-auto text-center">
-          <p 
-            className="text-muted-foreground"
-            style={{ fontFamily: 'Nunito, sans-serif' }}
-          >
-            © 2026 SmarAnandh. Made with ❤️ for Indian families.
-          </p>
+      <footer className="py-12 border-t border-border bg-card">
+        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-2">
+            <DiyaLogo className="w-8 h-8" />
+            <span className="font-bold text-lg">SmarAnandh</span>
+          </div>
+          <p className="text-muted-foreground text-sm">© 2026 SmarAnandh. Crafted for Indian families. 🇮🇳</p>
         </div>
       </footer>
     </div>
