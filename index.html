@@ -4,37 +4,49 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#FF9933" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#FF9F1C" /> <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SmarAnandh" />
     <meta name="mobile-web-app-capable" content="yes" />
     
-    <!-- SEO -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
     <title>SmarAnandh - Digital Wellness Companion</title>
     <meta name="description" content="SmarAnandh is a warm, accessible digital wellness companion designed for elderly Indian users. Medicine reminders, family connection, and joyful activities." />
     
-    <!-- Open Graph -->
     <meta property="og:title" content="SmarAnandh - Digital Wellness Companion" />
     <meta property="og:description" content="A warm, accessible digital wellness companion for elderly Indian users." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="/og-image.png" />
 
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<meta name="theme-color" content="#FF9F1C"> ```
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
-    <!-- Prevent text selection for app-like feel -->
     <style>
+      /* Disable blue highlight on tap for mobile */
       * {
+        -webkit-tap-highlight-color: transparent;
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         user-select: none;
       }
-      input, textarea {
+      
+      /* Re-enable selection for inputs so users can actually type */
+      input, textarea, [contenteditable="true"] {
         -webkit-user-select: text;
         user-select: text;
+      }
+
+      /* Smooth transitions for the whole app */
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #ffffff;
+        overscroll-behavior-y: contain; /* Prevents pull-to-refresh bounce on mobile */
       }
     </style>
   </head>
