@@ -54,34 +54,36 @@ export default function GuardianOnboarding() {
 
   // Skip onboarding if seniors already exist
   useEffect(() => {
-    if (!loading && linkedSeniors.length > 0) {
+    if (!loading && linkedSeniors && linkedSeniors.length > 0) {
       navigate('/guardian', { replace: true });
     }
   }, [linkedSeniors, loading, navigate]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user!.id}-${Date.now()}.${fileExt}`;
-    const filePath = `seniors/${fileName}`;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `seniors/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('senior-photos')
-      .upload(filePath, file);
+      const { error: uploadError } = await supabase.storage
+        .from('senior-photos')
+        .upload(filePath, file);
 
-    if (uploadError) {
-      toast.error('Failed to upload photo');
-      return;
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('senior-photos')
+        .getPublicUrl(filePath);
+
+      setSeniorData({ ...seniorData, photoUrl: publicUrl });
+      toast.success('Photo uploaded!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload photo. Ensure "senior-photos" bucket is public.');
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('senior-photos')
-      .getPublicUrl(filePath);
-
-    setSeniorData({ ...seniorData, photoUrl: publicUrl });
-    toast.success('Photo uploaded!');
   };
 
   const validatePin = () => {
@@ -100,7 +102,7 @@ export default function GuardianOnboarding() {
   const handleComplete = async () => {
     if (!validatePin()) return;
     if (!seniorData.name.trim()) {
-      toast.error('Please enter senior\'s name');
+      toast.error("Please enter senior's name");
       setStep(1);
       return;
     }
@@ -108,7 +110,21 @@ export default function GuardianOnboarding() {
     setIsSubmitting(true);
 
     try {
-      // Create senior record
+      // 1. CRITICAL: Upsert the 'guardian' role first
+      // This satisfies the RLS policy: "Guardians can insert seniors"
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .upsert({ 
+          user_id: user!.id, 
+          role: 'guardian' 
+        }, { onConflict: 'user_id, role' });
+
+      if (roleError) {
+        console.error("Role Assignment Error:", roleError);
+        throw new Error("Could not assign Guardian role. Check database user_roles table.");
+      }
+
+      // 2. Create senior record
       const { data: senior, error: seniorError } = await supabase
         .from('seniors')
         .insert({
@@ -117,14 +133,15 @@ export default function GuardianOnboarding() {
           language: seniorData.language,
           photo_url: seniorData.photoUrl,
           family_pin: pin,
-          guardian_email: user!.email
+          guardian_email: user!.email,
+          user_id: user!.id
         })
         .select()
         .single();
 
       if (seniorError) throw seniorError;
 
-      // Create guardian-senior link
+      // 3. Create guardian-senior link
       const { error: linkError } = await supabase
         .from('guardian_senior_links')
         .insert({
@@ -136,7 +153,7 @@ export default function GuardianOnboarding() {
 
       if (linkError) throw linkError;
 
-      // Create default joy preferences
+      // 4. Create default joy preferences
       await supabase
         .from('joy_preferences')
         .insert({
@@ -147,9 +164,9 @@ export default function GuardianOnboarding() {
       await refreshLinkedSeniors();
       toast.success('Setup complete! Welcome to SmarAnandh 🙏');
       navigate('/guardian');
-    } catch (error) {
-      console.error('Onboarding error:', error);
-      toast.error('Something went wrong. Please try again.');
+    } catch (error: any) {
+      console.error('Onboarding error detail:', error);
+      toast.error(error.message || 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -170,257 +187,107 @@ export default function GuardianOnboarding() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary">
-      {/* Progress header */}
       <header className="px-6 py-8 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto">
-          <h1 
-            className="text-2xl font-bold text-foreground mb-2"
-            style={{ fontFamily: 'Playfair Display, serif' }}
-          >
-            🙏 Welcome to SmarAnandh
-          </h1>
-          <p className="text-muted-foreground mb-6" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            Let's set up your loved one's companion
-          </p>
-          
-          {/* Step indicators */}
+          <h1 className="text-2xl font-bold text-foreground mb-2">🙏 Welcome to SmarAnandh</h1>
+          <p className="text-muted-foreground mb-6">Let's set up your loved one's companion</p>
           <div className="flex gap-4">
             {steps.map((s) => (
               <div 
                 key={s.number}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${
-                  step === s.number 
-                    ? 'bg-primary text-primary-foreground' 
-                    : step > s.number 
-                      ? 'bg-success/20 text-success'
-                      : 'bg-muted text-muted-foreground'
+                  step === s.number ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {step > s.number ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <s.icon className="w-5 h-5" />
-                )}
-                <span className="font-medium" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                  {s.title}
-                </span>
+                {step > s.number ? <Check className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
+                <span className="font-medium">{s.title}</span>
               </div>
             ))}
           </div>
         </div>
       </header>
 
-      {/* Step content */}
       <main className="px-6 py-8">
         <div className="max-w-md mx-auto">
           <AnimatePresence mode="wait">
-            {/* Step 1: Senior Profile */}
             {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
+              <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 <div className="text-center mb-8">
-                  <h2 className="text-xl font-bold text-foreground mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                    Tell us about your loved one
-                  </h2>
-                  <p className="text-muted-foreground">
-                    This helps us personalize their experience
-                  </p>
+                  <h2 className="text-xl font-bold mb-2">Tell us about your loved one</h2>
+                  <p className="text-muted-foreground">This helps us personalize their experience</p>
                 </div>
 
-                {/* Photo upload */}
                 <div className="flex justify-center mb-6">
                   <label className="cursor-pointer">
-                    <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-primary/20 hover:border-primary/50 transition-colors">
+                    <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-primary/20">
                       {seniorData.photoUrl ? (
-                        <img 
-                          src={seniorData.photoUrl} 
-                          alt="Senior" 
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={seniorData.photoUrl} alt="Senior" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-10 h-10 text-muted-foreground" />
                       )}
                     </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                    />
-                    <p className="text-center mt-2 text-sm text-muted-foreground">
-                      Add photo
-                    </p>
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                    <p className="text-center mt-2 text-sm text-muted-foreground">Add photo</p>
                   </label>
                 </div>
 
-                {/* Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-label">Full Name *</Label>
-                  <Input
-                    id="name"
-                    value={seniorData.name}
-                    onChange={(e) => setSeniorData({ ...seniorData, name: e.target.value })}
-                    placeholder="e.g., Ramesh Kumar"
-                    className="h-14 text-lg rounded-xl"
-                  />
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input id="name" value={seniorData.name} onChange={(e) => setSeniorData({ ...seniorData, name: e.target.value })} placeholder="e.g., Ramesh Kumar" className="h-14 text-lg rounded-xl" />
                 </div>
 
-                {/* Preferred name */}
                 <div className="space-y-2">
-                  <Label htmlFor="preferredName" className="text-label">
-                    Preferred Name / Nickname
-                  </Label>
-                  <Input
-                    id="preferredName"
-                    value={seniorData.preferredName}
-                    onChange={(e) => setSeniorData({ ...seniorData, preferredName: e.target.value })}
-                    placeholder="e.g., Bauji, Nani, Captain"
-                    className="h-14 text-lg rounded-xl"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    How do they like to be called?
-                  </p>
+                  <Label htmlFor="preferredName">Preferred Name / Nickname</Label>
+                  <Input id="preferredName" value={seniorData.preferredName} onChange={(e) => setSeniorData({ ...seniorData, preferredName: e.target.value })} placeholder="e.g., Bauji, Nani" className="h-14 text-lg rounded-xl" />
                 </div>
 
-                {/* Language preference */}
                 <div className="space-y-2">
-                  <Label className="text-label">Language Preference</Label>
+                  <Label>Language Preference</Label>
                   <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { value: 'hinglish', label: 'Hinglish' },
-                      { value: 'hindi', label: 'Hindi' },
-                      { value: 'english', label: 'English' }
-                    ].map((lang) => (
-                      <button
-                        key={lang.value}
-                        type="button"
-                        onClick={() => setSeniorData({ ...seniorData, language: lang.value })}
-                        className={`py-3 px-4 rounded-xl font-medium transition-all ${
-                          seniorData.language === lang.value
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }`}
+                    {['hinglish', 'hindi', 'english'].map((l) => (
+                      <button 
+                        key={l} 
+                        type="button" 
+                        onClick={() => setSeniorData({ ...seniorData, language: l })}
+                        className={`py-3 rounded-xl capitalize ${seniorData.language === l ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
                       >
-                        {lang.label}
+                        {l}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <TactileButton
-                  onClick={() => {
-                    if (!seniorData.name.trim()) {
-                      toast.error('Please enter senior\'s name');
-                      return;
-                    }
-                    setStep(2);
-                  }}
-                  variant="primary"
-                  size="large"
-                  className="w-full"
-                >
-                  Continue
-                  <ChevronRight className="w-5 h-5 ml-2" />
+                <TactileButton onClick={() => seniorData.name.trim() ? setStep(2) : toast.error("Name is required")} variant="primary" size="large" className="w-full">
+                  Continue <ChevronRight className="w-5 h-5 ml-2" />
                 </TactileButton>
               </motion.div>
             )}
 
-            {/* Step 2: Family PIN */}
             {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
+              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 <div className="text-center mb-8">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Key className="w-10 h-10 text-primary" />
+                  <Key className="w-12 h-12 text-primary mx-auto mb-4" />
+                  <h2 className="text-xl font-bold">Set a Family PIN</h2>
+                  <p className="text-muted-foreground">Used for the senior companion app</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label>Create 4-Digit PIN</Label>
+                    <Input type="password" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="h-16 text-2xl text-center tracking-[1rem]" />
                   </div>
-                  <h2 className="text-xl font-bold text-foreground mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                    Set a Family PIN
-                  </h2>
-                  <p className="text-muted-foreground">
-                    This 4-digit PIN will be used to access the senior companion app
-                  </p>
+                  <div>
+                    <Label>Confirm PIN</Label>
+                    <Input type="password" maxLength={4} value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} className="h-16 text-2xl text-center tracking-[1rem]" />
+                  </div>
                 </div>
 
-                {/* PIN input */}
-                <div className="space-y-2">
-                  <Label htmlFor="pin" className="text-label">Create PIN</Label>
-                  <Input
-                    id="pin"
-                    type="password"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={4}
-                    value={pin}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      setPin(value);
-                      setPinError('');
-                    }}
-                    placeholder="● ● ● ●"
-                    className="h-16 text-2xl text-center rounded-xl tracking-[1rem] font-mono"
-                  />
-                </div>
-
-                {/* Confirm PIN */}
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPin" className="text-label">Confirm PIN</Label>
-                  <Input
-                    id="confirmPin"
-                    type="password"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={4}
-                    value={confirmPin}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      setConfirmPin(value);
-                      setPinError('');
-                    }}
-                    placeholder="● ● ● ●"
-                    className="h-16 text-2xl text-center rounded-xl tracking-[1rem] font-mono"
-                  />
-                </div>
-
-                {pinError && (
-                  <p className="text-center text-destructive">{pinError}</p>
-                )}
-
-                <div className="bg-muted/50 rounded-xl p-4">
-                  <p className="text-sm text-muted-foreground text-center">
-                    💡 Share this PIN with your senior. They'll use your <strong>Phone Number + PIN</strong> to access their companion app.
-                  </p>
-                </div>
+                {pinError && <p className="text-center text-destructive">{pinError}</p>}
 
                 <div className="flex gap-4">
-                  <TactileButton
-                    onClick={() => setStep(1)}
-                    variant="neutral"
-                    size="large"
-                    className="flex-1"
-                  >
-                    <ChevronLeft className="w-5 h-5 mr-2" />
-                    Back
-                  </TactileButton>
-                  
-                  <TactileButton
-                    onClick={handleComplete}
-                    variant="primary"
-                    size="large"
-                    className="flex-1"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Setting up...' : 'Complete Setup'}
-                    <Check className="w-5 h-5 ml-2" />
+                  <TactileButton onClick={() => setStep(1)} variant="neutral" className="flex-1">Back</TactileButton>
+                  <TactileButton onClick={handleComplete} disabled={isSubmitting} variant="primary" className="flex-1">
+                    {isSubmitting ? 'Saving...' : 'Complete'}
                   </TactileButton>
                 </div>
               </motion.div>
