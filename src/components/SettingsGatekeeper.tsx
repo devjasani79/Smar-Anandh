@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Lock } from 'lucide-react';
-import { usePinAuth } from '@/contexts/PinAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SettingsGatekeeperProps {
   isOpen: boolean;
@@ -13,7 +13,7 @@ export function SettingsGatekeeper({ isOpen, onClose, onSuccess }: SettingsGatek
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { validatePin } = usePinAuth();
+  const { enterSeniorMode } = useAuth();
 
   const handleDigit = (digit: string) => {
     if (pin.length < 4 && !isLoading) {
@@ -36,7 +36,8 @@ export function SettingsGatekeeper({ isOpen, onClose, onSuccess }: SettingsGatek
     setIsLoading(true);
     setError('');
 
-    const result = await validatePin(pinToValidate);
+    // Use enterSeniorMode to validate the PIN
+    const result = await enterSeniorMode(pinToValidate);
 
     if (result.success) {
       onSuccess();

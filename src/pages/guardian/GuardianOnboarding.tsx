@@ -48,16 +48,16 @@ export default function GuardianOnboarding() {
   // Redirect if not logged in
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/auth');
+      navigate('/auth', { replace: true });
     }
   }, [user, loading, navigate]);
 
   // Skip onboarding if seniors already exist
   useEffect(() => {
-    if (linkedSeniors.length > 0) {
-      navigate('/guardian');
+    if (!loading && linkedSeniors.length > 0) {
+      navigate('/guardian', { replace: true });
     }
-  }, [linkedSeniors, navigate]);
+  }, [linkedSeniors, loading, navigate]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -145,7 +145,7 @@ export default function GuardianOnboarding() {
         });
 
       await refreshLinkedSeniors();
-      toast.success('Setup complete! Welcome to SmarAnandh.');
+      toast.success('Setup complete! Welcome to SmarAnandh 🙏');
       navigate('/guardian');
     } catch (error) {
       console.error('Onboarding error:', error);
