@@ -47,3 +47,41 @@
    ```bash
    git clone <your-repo-url>
    cd smaranandh
+
+2. **Install Dependencies:**
+    ```bash
+    npm install
+
+3. **Environment Variables: Create a .env file and add your Supabase credentials:**
+   ```bash
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+4. **Run Locally:**
+   ```bash
+   npm run dev
+
+## 🏗️ Database Schema & Security
+The app uses a **Guardian-First** architecture to ensure data integrity and privacy.
+
+* **Profiles & Roles:** Every user is assigned a `guardian` role upon registration via the `user_roles` table.
+* **Senior Links:** Seniors are linked to Guardians via the `guardian_senior_links` table, allowing multiple family members to care for one senior.
+* **RLS Policies:** Data is sandboxed; Row Level Security (RLS) ensures a Guardian can only see or modify data for Seniors they are explicitly linked to.
+
+
+
+---
+
+## 🎨 Design Philosophy
+SmarAnandh is built with a "Senior-First" UX approach:
+
+* **Cognitive Load:** Minimized menus. We maintain a maximum of 4 large, distinct buttons per screen for the senior interface to prevent choice paralysis.
+* **Visual Accessibility:** WCAG AA compliant contrast ratios. Font sizes start at 18px to ensure readability for users with presbyopia or visual impairments.
+* **Tactile Feedback:** Enhanced `TactileButton` components use depth-based CSS and micro-interactions to simulate the "click" of physical hardware buttons.
+
+
+
+---
+
+## 📝 License
+This project is licensed under the **MIT License**.
