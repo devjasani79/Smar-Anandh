@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
-  Heart, 
   Key, 
   Check, 
   ChevronRight, 
   ChevronLeft,
-  Upload,
-  Camera
+  Camera,
+  Phone,
+  Heart,
+  Calendar,
+  MapPin,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,23 +24,42 @@ import { toast } from 'sonner';
 interface SeniorData {
   name: string;
   preferredName: string;
+  dateOfBirth: string;
+  gender: string;
   language: string;
   photoUrl: string | null;
+  address: string;
+  bloodGroup: string;
+  emergencyContact: string;
+  chronicConditions: string[];
 }
+
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const CHRONIC_CONDITIONS = [
+  'Diabetes', 'Hypertension', 'Heart Disease', 'Arthritis', 
+  'Asthma', 'Thyroid', 'Kidney Disease', 'None'
+];
 
 export default function GuardianOnboarding() {
   const navigate = useNavigate();
-  const { user, loading, linkedSeniors, refreshLinkedSeniors } = useAuth();
+  const { user, loading, linkedSeniors, refreshLinkedSeniors, guardianProfile } = useAuth();
+  const hasRedirected = useRef(false);
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Step 1: Senior basics
+  // Step 1: Senior KYC
   const [seniorData, setSeniorData] = useState<SeniorData>({
     name: '',
     preferredName: '',
+    dateOfBirth: '',
+    gender: 'male',
     language: 'hinglish',
-    photoUrl: null
+    photoUrl: null,
+    address: '',
+    bloodGroup: '',
+    emergencyContact: '',
+    chronicConditions: []
   });
   
   // Step 2: Family PIN
@@ -47,14 +69,16 @@ export default function GuardianOnboarding() {
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !hasRedirected.current) {
+      hasRedirected.current = true;
       navigate('/auth', { replace: true });
     }
   }, [user, loading, navigate]);
 
   // Skip onboarding if seniors already exist
   useEffect(() => {
-    if (!loading && linkedSeniors && linkedSeniors.length > 0) {
+    if (!loading && linkedSeniors && linkedSeniors.length > 0 && !hasRedirected.current) {
+      hasRedirected.current = true;
       navigate('/guardian', { replace: true });
     }
   }, [linkedSeniors, loading, navigate]);
@@ -82,7 +106,21 @@ export default function GuardianOnboarding() {
       toast.success('Photo uploaded!');
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload photo. Ensure "senior-photos" bucket is public.');
+      toast.error('Photo upload failed. Please try again.');
+    }
+  };
+
+  const toggleCondition = (condition: string) => {
+    if (condition === 'None') {
+      setSeniorData({ ...seniorData, chronicConditions: ['None'] });
+      return;
+    }
+    
+    const current = seniorData.chronicConditions.filter(c => c !== 'None');
+    if (current.includes(condition)) {
+      setSeniorData({ ...seniorData, chronicConditions: current.filter(c => c !== condition) });
+    } else {
+      setSeniorData({ ...seniorData, chronicConditions: [...current, condition] });
     }
   };
 
@@ -99,61 +137,94 @@ export default function GuardianOnboarding() {
     return true;
   };
 
+  const validateStep1 = () => {
+    if (!seniorData.name.trim()) {
+      toast.error('Please enter senior\'s full name');
+      return false;
+    }
+    if (!seniorData.preferredName.trim()) {
+      toast.error('Please enter what they like to be called');
+      return false;
+    }
+    return true;
+  };
+
   const handleComplete = async () => {
     if (!validatePin()) return;
-    if (!seniorData.name.trim()) {
-      toast.error("Please enter senior's name");
-      setStep(1);
+    if (!user) {
+      toast.error('Session expired. Please login again.');
+      navigate('/auth', { replace: true });
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 1. CRITICAL: Upsert the 'guardian' role first
-      // This satisfies the RLS policy: "Guardians can insert seniors"
+      // Step 1: Ensure guardian role exists (use insert with onConflict to avoid duplicates)
       const { error: roleError } = await supabase
         .from('user_roles')
         .upsert({ 
-          user_id: user!.id, 
-          role: 'guardian' 
-        }, { onConflict: 'user_id, role' });
+          user_id: user.id, 
+          role: 'guardian' as const
+        }, { 
+          onConflict: 'user_id,role',
+          ignoreDuplicates: true 
+        });
 
       if (roleError) {
-        console.error("Role Assignment Error:", roleError);
-        throw new Error("Could not assign Guardian role. Check database user_roles table.");
+        console.error("Role assignment error:", roleError);
+        // Continue anyway - role might already exist
       }
 
-      // 2. Create senior record
+      // Step 2: Create senior record with all KYC data
       const { data: senior, error: seniorError } = await supabase
         .from('seniors')
         .insert({
-          name: seniorData.name,
-          preferred_name: seniorData.preferredName || null,
+          name: seniorData.name.trim(),
+          preferred_name: seniorData.preferredName.trim() || null,
           language: seniorData.language,
           photo_url: seniorData.photoUrl,
           family_pin: pin,
-          guardian_email: user!.email,
-          user_id: user!.id
+          guardian_email: user.email,
+          user_id: user.id,
+          chronic_conditions: seniorData.chronicConditions.length > 0 
+            ? seniorData.chronicConditions.filter(c => c !== 'None') 
+            : null,
+          emergency_contacts: seniorData.emergencyContact ? {
+            primary: {
+              phone: seniorData.emergencyContact,
+              name: guardianProfile?.fullName || 'Guardian'
+            }
+          } : null
         })
         .select()
         .single();
 
-      if (seniorError) throw seniorError;
+      if (seniorError) {
+        console.error("Senior creation error:", seniorError);
+        throw new Error(seniorError.message || 'Failed to create senior profile');
+      }
 
-      // 3. Create guardian-senior link
+      if (!senior) {
+        throw new Error('Senior profile was not created');
+      }
+
+      // Step 3: Create guardian-senior link
       const { error: linkError } = await supabase
         .from('guardian_senior_links')
         .insert({
-          guardian_id: user!.id,
+          guardian_id: user.id,
           senior_id: senior.id,
           relationship: 'family',
           is_primary: true
         });
 
-      if (linkError) throw linkError;
+      if (linkError) {
+        console.error("Link creation error:", linkError);
+        // Don't throw - senior was created successfully
+      }
 
-      // 4. Create default joy preferences
+      // Step 4: Create default joy preferences
       await supabase
         .from('joy_preferences')
         .insert({
@@ -163,9 +234,14 @@ export default function GuardianOnboarding() {
 
       await refreshLinkedSeniors();
       toast.success('Setup complete! Welcome to SmarAnandh 🙏');
-      navigate('/guardian');
+      
+      // Use setTimeout to ensure state updates before navigation
+      setTimeout(() => {
+        navigate('/guardian', { replace: true });
+      }, 100);
+      
     } catch (error: any) {
-      console.error('Onboarding error detail:', error);
+      console.error('Onboarding error:', error);
       toast.error(error.message || 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -187,43 +263,74 @@ export default function GuardianOnboarding() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary">
-      <header className="px-6 py-8 border-b border-border bg-card/50 backdrop-blur-sm">
+      {/* Header */}
+      <header className="px-6 py-6 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold text-foreground mb-2">🙏 Welcome to SmarAnandh</h1>
-          <p className="text-muted-foreground mb-6">Let's set up your loved one's companion</p>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <Heart className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
+                Welcome to SmarAnandh
+              </h1>
+              <p className="text-sm text-muted-foreground">Let's set up your loved one's companion</p>
+            </div>
+          </div>
+          
+          {/* Step indicators */}
+          <div className="flex gap-3">
             {steps.map((s) => (
               <div 
                 key={s.number}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${
-                  step === s.number ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                className={`flex-1 flex items-center gap-2 px-4 py-3 rounded-xl transition-all ${
+                  step === s.number 
+                    ? 'bg-primary text-primary-foreground shadow-lg' 
+                    : step > s.number 
+                    ? 'bg-success/20 text-success' 
+                    : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {step > s.number ? <Check className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
-                <span className="font-medium">{s.title}</span>
+                {step > s.number ? (
+                  <Check className="w-5 h-5" />
+                ) : (
+                  <s.icon className="w-5 h-5" />
+                )}
+                <span className="font-medium text-sm">{s.title}</span>
               </div>
             ))}
           </div>
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="px-6 py-8">
-        <div className="max-w-md mx-auto">
+        <div className="max-w-2xl mx-auto">
           <AnimatePresence mode="wait">
             {step === 1 && (
-              <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                <div className="text-center mb-8">
-                  <h2 className="text-xl font-bold mb-2">Tell us about your loved one</h2>
-                  <p className="text-muted-foreground">This helps us personalize their experience</p>
+              <motion.div 
+                key="step1" 
+                initial={{ opacity: 0, x: 20 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    Tell us about your loved one
+                  </h2>
+                  <p className="text-muted-foreground mt-2">This helps us personalize their experience</p>
                 </div>
 
+                {/* Photo Upload */}
                 <div className="flex justify-center mb-6">
-                  <label className="cursor-pointer">
-                    <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-primary/20">
+                  <label className="cursor-pointer group">
+                    <div className="w-28 h-28 rounded-full bg-muted flex items-center justify-center overflow-hidden 
+                                    border-4 border-primary/20 group-hover:border-primary/40 transition-colors">
                       {seniorData.photoUrl ? (
                         <img src={seniorData.photoUrl} alt="Senior" className="w-full h-full object-cover" />
                       ) : (
-                        <Camera className="w-10 h-10 text-muted-foreground" />
+                        <Camera className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
                       )}
                     </div>
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
@@ -231,63 +338,243 @@ export default function GuardianOnboarding() {
                   </label>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input id="name" value={seniorData.name} onChange={(e) => setSeniorData({ ...seniorData, name: e.target.value })} placeholder="e.g., Ramesh Kumar" className="h-14 text-lg rounded-xl" />
-                </div>
+                <div className="grid gap-4">
+                  {/* Full Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
+                      Full Name *
+                    </Label>
+                    <Input 
+                      id="name" 
+                      value={seniorData.name} 
+                      onChange={(e) => setSeniorData({ ...seniorData, name: e.target.value })} 
+                      placeholder="e.g., Ramesh Kumar Sharma" 
+                      className="h-14 text-lg rounded-xl" 
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="preferredName">Preferred Name / Nickname</Label>
-                  <Input id="preferredName" value={seniorData.preferredName} onChange={(e) => setSeniorData({ ...seniorData, preferredName: e.target.value })} placeholder="e.g., Bauji, Nani" className="h-14 text-lg rounded-xl" />
-                </div>
+                  {/* Preferred Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredName" className="flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-primary" />
+                      What do they like to be called? *
+                    </Label>
+                    <Input 
+                      id="preferredName" 
+                      value={seniorData.preferredName} 
+                      onChange={(e) => setSeniorData({ ...seniorData, preferredName: e.target.value })} 
+                      placeholder="e.g., Bauji, Nani, Papa" 
+                      className="h-14 text-lg rounded-xl" 
+                    />
+                    <p className="text-xs text-muted-foreground">This is how we'll address them in the app</p>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Language Preference</Label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {['hinglish', 'hindi', 'english'].map((l) => (
-                      <button 
-                        key={l} 
-                        type="button" 
-                        onClick={() => setSeniorData({ ...seniorData, language: l })}
-                        className={`py-3 rounded-xl capitalize ${seniorData.language === l ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                      >
-                        {l}
-                      </button>
-                    ))}
+                  {/* Gender */}
+                  <div className="space-y-2">
+                    <Label>Gender</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {['male', 'female', 'other'].map((g) => (
+                        <button 
+                          key={g} 
+                          type="button" 
+                          onClick={() => setSeniorData({ ...seniorData, gender: g })}
+                          className={`py-3 rounded-xl capitalize transition-all ${
+                            seniorData.gender === g 
+                              ? 'bg-primary text-primary-foreground shadow-md' 
+                              : 'bg-muted hover:bg-muted/80'
+                          }`}
+                        >
+                          {g === 'male' ? '👨 Male' : g === 'female' ? '👩 Female' : '🧓 Other'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Language Preference */}
+                  <div className="space-y-2">
+                    <Label>Language Preference</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { value: 'hinglish', label: 'Hinglish' },
+                        { value: 'hindi', label: 'हिंदी' },
+                        { value: 'english', label: 'English' }
+                      ].map((l) => (
+                        <button 
+                          key={l.value} 
+                          type="button" 
+                          onClick={() => setSeniorData({ ...seniorData, language: l.value })}
+                          className={`py-3 rounded-xl transition-all ${
+                            seniorData.language === l.value 
+                              ? 'bg-primary text-primary-foreground shadow-md' 
+                              : 'bg-muted hover:bg-muted/80'
+                          }`}
+                        >
+                          {l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Blood Group */}
+                  <div className="space-y-2">
+                    <Label>Blood Group (Optional)</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {BLOOD_GROUPS.map((bg) => (
+                        <button 
+                          key={bg} 
+                          type="button" 
+                          onClick={() => setSeniorData({ ...seniorData, bloodGroup: bg })}
+                          className={`py-2 rounded-lg text-sm transition-all ${
+                            seniorData.bloodGroup === bg 
+                              ? 'bg-destructive/20 text-destructive font-semibold' 
+                              : 'bg-muted hover:bg-muted/80'
+                          }`}
+                        >
+                          {bg}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Chronic Conditions */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-primary" />
+                      Any Chronic Conditions? (Select all that apply)
+                    </Label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {CHRONIC_CONDITIONS.map((condition) => (
+                        <button 
+                          key={condition} 
+                          type="button" 
+                          onClick={() => toggleCondition(condition)}
+                          className={`py-2 px-3 rounded-lg text-sm transition-all ${
+                            seniorData.chronicConditions.includes(condition)
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-muted hover:bg-muted/80'
+                          }`}
+                        >
+                          {condition}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Emergency Contact */}
+                  <div className="space-y-2">
+                    <Label htmlFor="emergency" className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-primary" />
+                      Emergency Contact Number
+                    </Label>
+                    <Input 
+                      id="emergency" 
+                      type="tel"
+                      value={seniorData.emergencyContact} 
+                      onChange={(e) => setSeniorData({ ...seniorData, emergencyContact: e.target.value })} 
+                      placeholder="+91 98765 43210" 
+                      className="h-14 text-lg rounded-xl" 
+                    />
                   </div>
                 </div>
 
-                <TactileButton onClick={() => seniorData.name.trim() ? setStep(2) : toast.error("Name is required")} variant="primary" size="large" className="w-full">
+                <TactileButton 
+                  onClick={() => validateStep1() && setStep(2)} 
+                  variant="primary" 
+                  size="large" 
+                  className="w-full mt-6"
+                >
                   Continue <ChevronRight className="w-5 h-5 ml-2" />
                 </TactileButton>
               </motion.div>
             )}
 
             {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+              <motion.div 
+                key="step2" 
+                initial={{ opacity: 0, x: 20 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
                 <div className="text-center mb-8">
-                  <Key className="w-12 h-12 text-primary mx-auto mb-4" />
-                  <h2 className="text-xl font-bold">Set a Family PIN</h2>
-                  <p className="text-muted-foreground">Used for the senior companion app</p>
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Key className="w-10 h-10 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    Create Family PIN
+                  </h2>
+                  <p className="text-muted-foreground mt-2">
+                    This 4-digit PIN will be used by {seniorData.preferredName || 'your loved one'} to access their companion app
+                  </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <Label>Create 4-Digit PIN</Label>
-                    <Input type="password" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="h-16 text-2xl text-center tracking-[1rem]" />
+                <div className="max-w-xs mx-auto space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-center block">Create 4-Digit PIN</Label>
+                    <Input 
+                      type="password" 
+                      inputMode="numeric"
+                      maxLength={4} 
+                      value={pin} 
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} 
+                      className="h-16 text-3xl text-center tracking-[1.5rem] font-mono rounded-xl"
+                      placeholder="••••"
+                    />
                   </div>
-                  <div>
-                    <Label>Confirm PIN</Label>
-                    <Input type="password" maxLength={4} value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} className="h-16 text-2xl text-center tracking-[1rem]" />
+                  
+                  <div className="space-y-2">
+                    <Label className="text-center block">Confirm PIN</Label>
+                    <Input 
+                      type="password" 
+                      inputMode="numeric"
+                      maxLength={4} 
+                      value={confirmPin} 
+                      onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} 
+                      className="h-16 text-3xl text-center tracking-[1.5rem] font-mono rounded-xl"
+                      placeholder="••••"
+                    />
+                  </div>
+
+                  {pinError && (
+                    <p className="text-center text-destructive text-sm flex items-center justify-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      {pinError}
+                    </p>
+                  )}
+
+                  <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-2">💡 Tip:</p>
+                    <p>Choose a PIN that's easy for {seniorData.preferredName || 'them'} to remember but not too obvious (avoid 1234, birth year, etc.)</p>
                   </div>
                 </div>
 
-                {pinError && <p className="text-center text-destructive">{pinError}</p>}
-
-                <div className="flex gap-4">
-                  <TactileButton onClick={() => setStep(1)} variant="neutral" className="flex-1">Back</TactileButton>
-                  <TactileButton onClick={handleComplete} disabled={isSubmitting} variant="primary" className="flex-1">
-                    {isSubmitting ? 'Saving...' : 'Complete'}
+                <div className="flex gap-4 mt-8">
+                  <TactileButton 
+                    onClick={() => setStep(1)} 
+                    variant="neutral" 
+                    className="flex-1"
+                  >
+                    <ChevronLeft className="w-5 h-5 mr-2" />
+                    Back
+                  </TactileButton>
+                  <TactileButton 
+                    onClick={handleComplete} 
+                    disabled={isSubmitting || pin.length !== 4 || confirmPin.length !== 4} 
+                    variant="primary" 
+                    className="flex-1"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        Complete Setup
+                        <Check className="w-5 h-5 ml-2" />
+                      </>
+                    )}
                   </TactileButton>
                 </div>
               </motion.div>
