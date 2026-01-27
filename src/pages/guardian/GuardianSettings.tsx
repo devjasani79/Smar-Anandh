@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   User,
@@ -10,7 +10,10 @@ import {
   Phone,
   Loader2,
   AlertCircle,
-  Bell
+  Bell,
+  LogOut,
+  Shield,
+  UserX
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,15 +35,19 @@ interface SeniorDetails {
   chronic_conditions: string[];
   nudge_frequency: string;
   emergency_contacts: { name: string; phone: string; relationship: string }[];
+  family_pin: string | null;
 }
 
 export default function GuardianSettings() {
-  const { user, refreshLinkedSeniors } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut, refreshLinkedSeniors, guardianProfile } = useAuth();
   const { selectedSenior, linkedSeniors } = useOutletContext<ContextType>();
   const [senior, setSenior] = useState<SeniorDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAddSenior, setShowAddSenior] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<'senior' | 'account' | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New senior form
@@ -48,6 +55,7 @@ export default function GuardianSettings() {
     name: '',
     language: 'hinglish',
     chronicConditions: '',
+    familyPin: '',
     emergencyContacts: [{ name: '', phone: '', relationship: '' }],
   });
 
@@ -74,6 +82,7 @@ export default function GuardianSettings() {
         ...data,
         chronic_conditions: data.chronic_conditions || [],
         emergency_contacts: (data.emergency_contacts as SeniorDetails['emergency_contacts']) || [],
+        family_pin: data.family_pin,
       });
     }
     setLoading(false);
@@ -121,6 +130,7 @@ export default function GuardianSettings() {
         chronic_conditions: senior.chronic_conditions,
         nudge_frequency: senior.nudge_frequency,
         emergency_contacts: senior.emergency_contacts,
+        family_pin: senior.family_pin,
       })
       .eq('id', senior.id);
 
@@ -139,6 +149,11 @@ export default function GuardianSettings() {
       return;
     }
 
+    if (!newSeniorForm.familyPin || newSeniorForm.familyPin.length !== 4) {
+      toast.error('Please enter a 4-digit Family PIN');
+      return;
+    }
+
     setSaving(true);
 
     // Create senior
@@ -147,6 +162,9 @@ export default function GuardianSettings() {
       .insert({
         name: newSeniorForm.name,
         language: newSeniorForm.language,
+        family_pin: newSeniorForm.familyPin,
+        user_id: user.id,
+        guardian_email: user.email,
         chronic_conditions: newSeniorForm.chronicConditions
           .split(',')
           .map(c => c.trim())
@@ -180,11 +198,76 @@ export default function GuardianSettings() {
         name: '',
         language: 'hinglish',
         chronicConditions: '',
+        familyPin: '',
         emergencyContacts: [{ name: '', phone: '', relationship: '' }],
       });
       await refreshLinkedSeniors();
     }
     setSaving(false);
+  };
+
+  const handleDeleteSenior = async () => {
+    if (!selectedSenior) return;
+    
+    setDeleting(true);
+    
+    // Delete in order: links, preferences, medications, logs, then senior
+    await supabase.from('guardian_senior_links').delete().eq('senior_id', selectedSenior);
+    await supabase.from('joy_preferences').delete().eq('senior_id', selectedSenior);
+    await supabase.from('medication_logs').delete().eq('senior_id', selectedSenior);
+    await supabase.from('medications').delete().eq('senior_id', selectedSenior);
+    await supabase.from('activity_logs').delete().eq('senior_id', selectedSenior);
+    await supabase.from('health_vitals').delete().eq('senior_id', selectedSenior);
+    
+    const { error } = await supabase.from('seniors').delete().eq('id', selectedSenior);
+    
+    if (error) {
+      toast.error('Failed to delete senior profile');
+    } else {
+      toast.success('Senior profile deleted');
+      await refreshLinkedSeniors();
+    }
+    
+    setDeleting(false);
+    setShowDeleteConfirm(null);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    setDeleting(true);
+    
+    try {
+      // Delete all linked seniors first
+      for (const s of linkedSeniors) {
+        await supabase.from('guardian_senior_links').delete().eq('senior_id', s.id);
+        await supabase.from('joy_preferences').delete().eq('senior_id', s.id);
+        await supabase.from('medication_logs').delete().eq('senior_id', s.id);
+        await supabase.from('medications').delete().eq('senior_id', s.id);
+        await supabase.from('activity_logs').delete().eq('senior_id', s.id);
+        await supabase.from('health_vitals').delete().eq('senior_id', s.id);
+        await supabase.from('seniors').delete().eq('id', s.id);
+      }
+      
+      // Delete profile and roles
+      await supabase.from('profiles').delete().eq('user_id', user.id);
+      await supabase.from('user_roles').delete().eq('user_id', user.id);
+      
+      // Sign out
+      await signOut();
+      toast.success('Account deleted successfully');
+      navigate('/');
+    } catch (error) {
+      toast.error('Failed to delete account');
+    }
+    
+    setDeleting(false);
+    setShowDeleteConfirm(null);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
   };
 
   const addEmergencyContact = () => {
@@ -208,23 +291,61 @@ export default function GuardianSettings() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
             Settings
           </h1>
           <p className="text-muted-foreground">
-            Manage seniors and app preferences
+            Manage seniors, account, and app preferences
           </p>
         </div>
-        <TactileButton
-          variant="primary"
-          onClick={() => setShowAddSenior(true)}
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Senior
-        </TactileButton>
+        <div className="flex gap-3">
+          <TactileButton
+            variant="neutral"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-5 h-5 mr-2" />
+            Logout
+          </TactileButton>
+          <TactileButton
+            variant="primary"
+            onClick={() => setShowAddSenior(true)}
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Senior
+          </TactileButton>
+        </div>
+      </motion.div>
+
+      {/* Guardian Profile Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card-warm p-6"
+      >
+        <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-primary" />
+          Guardian Profile
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-muted-foreground text-sm">Name</Label>
+            <p className="text-foreground font-medium">{guardianProfile?.fullName || 'Not set'}</p>
+          </div>
+          <div>
+            <Label className="text-muted-foreground text-sm">Email</Label>
+            <p className="text-foreground font-medium">{user?.email}</p>
+          </div>
+          <div>
+            <Label className="text-muted-foreground text-sm">Phone (for Senior Login)</Label>
+            <p className="text-foreground font-medium">{guardianProfile?.phone || 'Not set'}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Seniors use this phone + Family PIN to login
+            </p>
+          </div>
+        </div>
       </motion.div>
 
       {/* Senior Profile */}
@@ -242,13 +363,13 @@ export default function GuardianSettings() {
             {/* Photo */}
             <div className="flex flex-col items-center">
               <div 
-                className="w-32 h-32 rounded-full bg-muted flex items-center justify-center overflow-hidden mb-4 cursor-pointer hover:opacity-80 transition-opacity"
+                className="w-28 h-28 rounded-full bg-muted flex items-center justify-center overflow-hidden mb-4 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {senior.photo_url ? (
                   <img src={senior.photo_url} alt={senior.name} className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-16 h-16 text-muted-foreground" />
+                  <User className="w-14 h-14 text-muted-foreground" />
                 )}
               </div>
               <button
@@ -293,6 +414,24 @@ export default function GuardianSettings() {
                     <option value="english">English</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Family PIN (4 digits)</Label>
+                <Input
+                  type="text"
+                  maxLength={4}
+                  value={senior.family_pin || ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setSenior(prev => prev ? { ...prev, family_pin: value } : null);
+                  }}
+                  placeholder="1234"
+                  className="h-12 font-mono text-lg tracking-widest"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Senior uses this PIN with your phone number to login
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -374,7 +513,7 @@ export default function GuardianSettings() {
               </p>
             ) : (
               senior.emergency_contacts.map((contact, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-xl">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-muted/30 rounded-xl">
                   <Input
                     value={contact.name}
                     onChange={(e) => {
@@ -421,6 +560,43 @@ export default function GuardianSettings() {
         </motion.div>
       )}
 
+      {/* Danger Zone */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="card-warm p-6 border-2 border-destructive/20"
+      >
+        <h2 className="text-xl font-semibold text-destructive mb-4 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          Danger Zone
+        </h2>
+        <p className="text-muted-foreground text-sm mb-6">
+          These actions are irreversible. Please be certain before proceeding.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          {senior && (
+            <TactileButton
+              variant="neutral"
+              onClick={() => setShowDeleteConfirm('senior')}
+              className="border-destructive/50 text-destructive hover:bg-destructive/10"
+            >
+              <UserX className="w-5 h-5 mr-2" />
+              Delete Senior Profile
+            </TactileButton>
+          )}
+          <TactileButton
+            variant="neutral"
+            onClick={() => setShowDeleteConfirm('account')}
+            className="border-destructive text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="w-5 h-5 mr-2" />
+            Delete My Account
+          </TactileButton>
+        </div>
+      </motion.div>
+
       {/* Add Senior Modal */}
       {showAddSenior && (
         <motion.div
@@ -444,7 +620,7 @@ export default function GuardianSettings() {
               </p>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-5">
               <div className="space-y-2">
                 <Label>Senior's Name *</Label>
                 <Input
@@ -453,6 +629,24 @@ export default function GuardianSettings() {
                   placeholder="e.g., Dadi, Nani, Papa"
                   className="h-12"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Family PIN (4 digits) *</Label>
+                <Input
+                  type="text"
+                  maxLength={4}
+                  value={newSeniorForm.familyPin}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setNewSeniorForm(prev => ({ ...prev, familyPin: value }));
+                  }}
+                  placeholder="1234"
+                  className="h-12 font-mono text-lg tracking-widest"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Senior will use your phone ({guardianProfile?.phone || 'Not set'}) + this PIN to login
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -478,7 +672,7 @@ export default function GuardianSettings() {
                 />
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
@@ -502,7 +696,7 @@ export default function GuardianSettings() {
                         setNewSeniorForm(prev => ({ ...prev, emergencyContacts: updated }));
                       }}
                       placeholder="Name"
-                      className="h-12"
+                      className="h-10"
                     />
                     <Input
                       value={contact.phone}
@@ -512,7 +706,7 @@ export default function GuardianSettings() {
                         setNewSeniorForm(prev => ({ ...prev, emergencyContacts: updated }));
                       }}
                       placeholder="Phone"
-                      className="h-12"
+                      className="h-10"
                     />
                     <Input
                       value={contact.relationship}
@@ -522,7 +716,7 @@ export default function GuardianSettings() {
                         setNewSeniorForm(prev => ({ ...prev, emergencyContacts: updated }));
                       }}
                       placeholder="Relation"
-                      className="h-12"
+                      className="h-10"
                     />
                   </div>
                 ))}
@@ -549,6 +743,60 @@ export default function GuardianSettings() {
                   <Plus className="w-5 h-5 mr-2" />
                 )}
                 Add Senior
+              </TactileButton>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowDeleteConfirm(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-card rounded-2xl shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-destructive" />
+              </div>
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                {showDeleteConfirm === 'senior' ? 'Delete Senior Profile?' : 'Delete Your Account?'}
+              </h2>
+              <p className="text-muted-foreground">
+                {showDeleteConfirm === 'senior' 
+                  ? 'This will permanently delete all data for this senior including medications, logs, and preferences.'
+                  : 'This will permanently delete your account and all linked seniors. This cannot be undone.'
+                }
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <TactileButton
+                variant="neutral"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(null)}
+              >
+                Cancel
+              </TactileButton>
+              <TactileButton
+                variant="neutral"
+                className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={showDeleteConfirm === 'senior' ? handleDeleteSenior : handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  'Delete'
+                )}
               </TactileButton>
             </div>
           </motion.div>

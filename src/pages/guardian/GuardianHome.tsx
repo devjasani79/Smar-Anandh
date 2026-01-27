@@ -11,7 +11,8 @@ import {
   Music,
   Eye,
   Image,
-  Gamepad2
+  Gamepad2,
+  User
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { GlowIcon } from '@/components/GlowIcon';
@@ -148,9 +149,9 @@ export default function GuardianHome() {
     switch (type) {
       case 'medicine_taken': return <Pill className="w-5 h-5 text-success" />;
       case 'music_played': return <Music className="w-5 h-5 text-primary" />;
-      case 'video_watched': return <Eye className="w-5 h-5 text-blue-500" />;
-      case 'photos_viewed': return <Image className="w-5 h-5 text-purple-500" />;
-      case 'game_played': return <Gamepad2 className="w-5 h-5 text-pink-500" />;
+      case 'video_watched': return <Eye className="w-5 h-5 text-primary" />;
+      case 'photos_viewed': return <Image className="w-5 h-5 text-primary" />;
+      case 'game_played': return <Gamepad2 className="w-5 h-5 text-primary" />;
       case 'sos_triggered': return <AlertCircle className="w-5 h-5 text-destructive" />;
       default: return <ActivityIcon className="w-5 h-5 text-muted-foreground" />;
     }
@@ -174,15 +175,18 @@ export default function GuardianHome() {
   if (!selectedSenior || linkedSeniors.length === 0) {
     return (
       <div className="text-center py-16">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+          <User className="w-10 h-10 text-muted-foreground" />
+        </div>
         <h2 className="text-2xl font-semibold text-foreground mb-4">
           No Seniors Linked
         </h2>
-        <p className="text-muted-foreground mb-8">
-          You haven't linked any seniors yet. Add a senior to start monitoring.
+        <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+          You haven't linked any seniors yet. Add a senior to start monitoring their health and activities.
         </p>
         <TactileButton
           variant="primary"
-          onClick={() => navigate('/guardian/settings/add-senior')}
+          onClick={() => navigate('/guardian/settings')}
         >
           <Plus className="w-5 h-5 mr-2" />
           Add Senior
@@ -193,21 +197,35 @@ export default function GuardianHome() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - Improved layout */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="bg-card rounded-2xl p-6 shadow-lg"
       >
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-            {selectedSeniorData?.name}'s Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Real-time monitoring & care management
-          </p>
-        </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {/* Senior Photo */}
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {selectedSeniorData?.photo_url ? (
+                <img 
+                  src={selectedSeniorData.photo_url} 
+                  alt={selectedSeniorData.name} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-8 h-8 text-primary" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-xl lg:text-2xl font-bold text-foreground">
+                {selectedSeniorData?.name}'s Dashboard
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Real-time monitoring & care management
+              </p>
+            </div>
+          </div>
           <TactileButton
             variant="primary"
             size="default"
@@ -220,19 +238,19 @@ export default function GuardianHome() {
       </motion.div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="card-warm p-6"
+          className="card-warm p-5"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-success/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-success/20 flex items-center justify-center flex-shrink-0">
               <GlowIcon icon={CheckCircle} size={24} glowColor="success" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Medicines Today</p>
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground truncate">Medicines Today</p>
               <p className="text-2xl font-bold text-foreground">
                 {medicationLogs.filter(m => m.status === 'taken').length}/{medicationLogs.length}
               </p>
@@ -244,14 +262,14 @@ export default function GuardianHome() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="card-warm p-6"
+          className="card-warm p-5"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
               <GlowIcon icon={ActivityIcon} size={24} glowColor="primary" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Activities Today</p>
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground truncate">Activities Today</p>
               <p className="text-2xl font-bold text-foreground">
                 {activityLogs.filter(a => {
                   const logDate = new Date(a.logged_at);
@@ -267,15 +285,15 @@ export default function GuardianHome() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="card-warm p-6"
+          className="card-warm p-5"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
               <Clock className="w-6 h-6 text-blue-500" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Last Active</p>
-              <p className="text-lg font-bold text-foreground">
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground truncate">Last Active</p>
+              <p className="text-lg font-bold text-foreground truncate">
                 {activityLogs.length > 0 
                   ? format(new Date(activityLogs[0].logged_at), 'h:mm a')
                   : 'No activity'
@@ -295,13 +313,13 @@ export default function GuardianHome() {
           transition={{ delay: 0.4 }}
           className="lg:col-span-2 card-warm"
         >
-          <div className="p-6 border-b border-border">
-            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          <div className="p-5 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <ActivityIcon className="w-5 h-5 text-primary" />
               Live Activity Feed
             </h2>
           </div>
-          <div className="p-6 max-h-[500px] overflow-y-auto">
+          <div className="p-5 max-h-[400px] overflow-y-auto">
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
             ) : activityLogs.length === 0 ? (
@@ -309,23 +327,23 @@ export default function GuardianHome() {
                 No activities recorded yet
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {activityLogs.map((log, index) => (
                   <motion.div
                     key={log.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="flex items-start gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors"
+                    className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
                   >
                     <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                       {getActivityIcon(log.activity_type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground">
+                      <p className="font-medium text-foreground text-sm">
                         {getActivityLabel(log.activity_type, log.activity_data)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {format(new Date(log.logged_at), 'MMM d, h:mm a')}
                       </p>
                     </div>
@@ -343,37 +361,37 @@ export default function GuardianHome() {
           transition={{ delay: 0.5 }}
           className="card-warm"
         >
-          <div className="p-6 border-b border-border">
-            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          <div className="p-5 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <ActivityIcon className="w-5 h-5 text-success" />
               Health Vitals
             </h2>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {healthVitals.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground text-sm">
                 No vitals recorded yet
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {healthVitals.map((vital) => (
                   <div
                     key={vital.id}
                     className="flex items-center justify-between p-3 rounded-xl bg-muted/30"
                   >
-                    <div>
-                      <p className="font-medium text-foreground capitalize">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground capitalize text-sm truncate">
                         {vital.vital_type.replace(/_/g, ' ')}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {format(new Date(vital.recorded_at), 'MMM d, h:mm a')}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <p className="text-xl font-bold text-foreground">
                         {vital.value}
                       </p>
-                      <p className="text-sm text-muted-foreground">{vital.unit}</p>
+                      <p className="text-xs text-muted-foreground">{vital.unit}</p>
                     </div>
                   </div>
                 ))}
@@ -390,19 +408,19 @@ export default function GuardianHome() {
         transition={{ delay: 0.6 }}
         className="card-warm"
       >
-        <div className="p-6 border-b border-border">
-          <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+        <div className="p-5 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Pill className="w-5 h-5 text-primary" />
             Today's Medications
           </h2>
         </div>
-        <div className="p-6">
+        <div className="p-5">
           {medicationLogs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No medications scheduled for today
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {medicationLogs.map((log) => (
                 <div
                   key={log.id}
