@@ -33,6 +33,9 @@ import GuardianOnboarding from "./pages/guardian/GuardianOnboarding";
 // Senior Pages
 import SeniorHome from "./pages/senior/SeniorHome";
 import SeniorDawa from "./pages/senior/SeniorDawa";
+import SeniorSantosh from "./pages/senior/SeniorSantosh";
+import SeniorMadad from "./pages/senior/SeniorMadad";
+import SeniorParivaar from "./pages/senior/SeniorParivaar";
 
 const queryClient = new QueryClient();
 
@@ -64,9 +67,9 @@ const App = () => (
             {/* Senior Routes */}
             <Route path="/app" element={<SeniorHome />} />
             <Route path="/senior/dawa" element={<SeniorDawa />} />
-            <Route path="/senior/santosh" element={<SeniorHome />} />
-            <Route path="/senior/madad" element={<SeniorHome />} />
-            <Route path="/senior/parivaar" element={<SeniorHome />} />
+            <Route path="/senior/santosh" element={<SeniorSantosh />} />
+            <Route path="/senior/madad" element={<SeniorMadad />} />
+            <Route path="/senior/parivaar" element={<SeniorParivaar />} />
             
             {/* Legacy redirects */}
             <Route path="/dawa" element={<Navigate to="/senior/dawa" replace />} />
