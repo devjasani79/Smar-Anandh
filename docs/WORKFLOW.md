@@ -147,10 +147,12 @@ interface AuthContextType {
 - [x] Dashboard home with senior cards
 - [x] Medication management (add/edit/delete)
 - [x] Settings page with profile management
+- [x] Guardian profile editing (name, phone)
 - [x] Add/remove seniors
 - [x] Update Family PIN
 - [x] Delete senior/account functionality
 - [x] Photo uploads for seniors
+- [x] Emergency contacts management
 
 ### Phase 4: Senior Interface ✅
 - [x] Simplified home screen with large tiles
@@ -159,6 +161,8 @@ interface AuthContextType {
 - [x] MADAD (Help) - Emergency SOS, quick messages
 - [x] PARIVAAR (Family) - Contact family members
 - [x] Hinglish UI text throughout
+- [x] YouTube integration for bhajans & serials
+- [x] Mood tracking
 
 ### Phase 5: Landing Page ✅
 - [x] Hero carousel with overlay content
@@ -167,6 +171,12 @@ interface AuthContextType {
 - [x] Testimonials
 - [x] "How It Works" guide
 - [x] CTA buttons
+
+### Phase 6: Backend Functions ✅
+- [x] `medication-reminders` edge function (cron job)
+- [x] `log-medication` edge function (mark taken/snooze)
+- [x] Notification system for missed doses
+- [x] Activity logging
 
 ---
 
@@ -187,40 +197,41 @@ interface AuthContextType {
 3. **Guardian Dashboard**
    - View linked seniors
    - Manage medications
+   - Edit guardian profile (name, phone)
    - Settings with logout, delete
 
 4. **Senior Interface**
    - All 4 main tiles functional (Dawa, Khushi, Madad, Parivaar)
+   - YouTube playback for bhajans and serials
+   - Mood check-in
    - High-contrast, large buttons
    - PIN-protected settings access
 
+5. **Medication Reminders**
+   - Edge function checks for due medications
+   - Creates notification for guardians
+   - Tracks missed doses
+
 ### Known Limitations
 - Photo albums in Joy section are placeholder
-- Video/Music playback not integrated (placeholder UI)
-- Push notifications not implemented yet
+- Push notifications not yet connected to devices
 - Real phone/video calls not integrated
 
 ---
 
 ## 🚀 Future Roadmap
 
-### Phase 6: Enhanced Medications
+### Phase 7: Enhanced Medications
 - [ ] OCR prescription scanning
 - [ ] Medicine image recognition
 - [ ] Smart refill reminders
 - [ ] Pharmacy integration
 
-### Phase 7: Notifications
-- [ ] Push notifications (Firebase/OneSignal)
+### Phase 8: Push Notifications
+- [ ] Device push notifications (Firebase/OneSignal)
 - [ ] SMS alerts for missed doses
 - [ ] Email summaries for guardians
-- [ ] Scheduled reminder cron jobs
-
-### Phase 8: Joy Features
-- [ ] YouTube integration for bhajans/serials
-- [ ] Google Photos album sync
-- [ ] Simple cognitive games
-- [ ] Daily prompts and activities
+- [ ] Cron job scheduler in Supabase
 
 ### Phase 9: Health Tracking
 - [ ] Vital signs logging (BP, sugar, weight)
@@ -229,7 +240,7 @@ interface AuthContextType {
 - [ ] Doctor appointment reminders
 
 ### Phase 10: Communication
-- [ ] In-app voice/video calls
+- [ ] In-app voice/video calls (WebRTC)
 - [ ] Voice messages
 - [ ] Family photo sharing
 - [ ] Activity feed for guardians

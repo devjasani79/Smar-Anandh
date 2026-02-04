@@ -190,12 +190,14 @@ export default function GuardianOnboarding() {
           chronic_conditions: seniorData.chronicConditions.length > 0 
             ? seniorData.chronicConditions.filter(c => c !== 'None') 
             : null,
-          emergency_contacts: seniorData.emergencyContact ? {
-            primary: {
+          // Store as array format for consistency
+          emergency_contacts: seniorData.emergencyContact ? [
+            {
               phone: seniorData.emergencyContact,
-              name: guardianProfile?.fullName || 'Guardian'
+              name: guardianProfile?.fullName || 'Guardian',
+              relationship: 'Primary Guardian'
             }
-          } : null
+          ] : []
         })
         .select()
         .single();

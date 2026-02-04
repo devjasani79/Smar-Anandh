@@ -49,6 +49,24 @@ export default function GuardianSettings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<'senior' | 'account' | null>(null);
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Guardian profile editing
+  const [editingGuardian, setEditingGuardian] = useState(false);
+  const [savingGuardian, setSavingGuardian] = useState(false);
+  const [guardianForm, setGuardianForm] = useState({
+    fullName: guardianProfile?.fullName || '',
+    phone: guardianProfile?.phone || '',
+  });
+
+  // Update guardian form when profile loads
+  useEffect(() => {
+    if (guardianProfile) {
+      setGuardianForm({
+        fullName: guardianProfile.fullName || '',
+        phone: guardianProfile.phone || '',
+      });
+    }
+  }, [guardianProfile]);
 
   // New senior form
   const [newSeniorForm, setNewSeniorForm] = useState({
@@ -67,6 +85,40 @@ export default function GuardianSettings() {
     }
   }, [selectedSenior]);
 
+  // Helper function to normalize emergency_contacts to array format
+  const normalizeEmergencyContacts = (contacts: any): { name: string; phone: string; relationship: string }[] => {
+    if (!contacts) return [];
+    
+    // If it's already an array, return it
+    if (Array.isArray(contacts)) {
+      return contacts.map(c => ({
+        name: c.name || '',
+        phone: c.phone || '',
+        relationship: c.relationship || ''
+      }));
+    }
+    
+    // If it's an object with 'primary' key (old format), convert to array
+    if (typeof contacts === 'object' && contacts.primary) {
+      return [{
+        name: contacts.primary.name || '',
+        phone: contacts.primary.phone || '',
+        relationship: contacts.primary.relationship || 'Primary'
+      }];
+    }
+    
+    // If it's an object without 'primary', try to extract values
+    if (typeof contacts === 'object') {
+      return Object.values(contacts).map((c: any) => ({
+        name: c.name || '',
+        phone: c.phone || '',
+        relationship: c.relationship || ''
+      }));
+    }
+    
+    return [];
+  };
+
   const fetchSeniorDetails = async () => {
     if (!selectedSenior) return;
     
@@ -81,7 +133,7 @@ export default function GuardianSettings() {
       setSenior({
         ...data,
         chronic_conditions: data.chronic_conditions || [],
-        emergency_contacts: (data.emergency_contacts as SeniorDetails['emergency_contacts']) || [],
+        emergency_contacts: normalizeEmergencyContacts(data.emergency_contacts),
         family_pin: data.family_pin,
       });
     }
@@ -270,6 +322,31 @@ export default function GuardianSettings() {
     navigate('/');
   };
 
+  const handleSaveGuardianProfile = async () => {
+    if (!user || !guardianProfile) return;
+    
+    setSavingGuardian(true);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: guardianForm.fullName,
+        phone: guardianForm.phone,
+      })
+      .eq('id', guardianProfile.id);
+    
+    if (error) {
+      toast.error('Failed to update profile');
+    } else {
+      toast.success('Profile updated!');
+      setEditingGuardian(false);
+      // Refresh auth context to get updated profile
+      window.location.reload();
+    }
+    
+    setSavingGuardian(false);
+  };
+
   const addEmergencyContact = () => {
     setNewSeniorForm(prev => ({
       ...prev,
@@ -325,27 +402,80 @@ export default function GuardianSettings() {
         animate={{ opacity: 1, y: 0 }}
         className="card-warm p-6"
       >
-        <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          Guardian Profile
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-muted-foreground text-sm">Name</Label>
-            <p className="text-foreground font-medium">{guardianProfile?.fullName || 'Not set'}</p>
-          </div>
-          <div>
-            <Label className="text-muted-foreground text-sm">Email</Label>
-            <p className="text-foreground font-medium">{user?.email}</p>
-          </div>
-          <div>
-            <Label className="text-muted-foreground text-sm">Phone (for Senior Login)</Label>
-            <p className="text-foreground font-medium">{guardianProfile?.phone || 'Not set'}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Seniors use this phone + Family PIN to login
-            </p>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            Guardian Profile
+          </h2>
+          {!editingGuardian ? (
+            <button
+              onClick={() => setEditingGuardian(true)}
+              className="text-primary text-sm hover:underline"
+            >
+              Edit
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditingGuardian(false)}
+                className="text-muted-foreground text-sm hover:underline"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveGuardianProfile}
+                disabled={savingGuardian}
+                className="text-primary text-sm hover:underline flex items-center gap-1"
+              >
+                {savingGuardian ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Save
+              </button>
+            </div>
+          )}
         </div>
+        
+        {!editingGuardian ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-muted-foreground text-sm">Name</Label>
+              <p className="text-foreground font-medium">{guardianProfile?.fullName || 'Not set'}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-sm">Email</Label>
+              <p className="text-foreground font-medium">{user?.email}</p>
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-sm">Phone (for Senior Login)</Label>
+              <p className="text-foreground font-medium">{guardianProfile?.phone || 'Not set'}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Seniors use this phone + Family PIN to login
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={guardianForm.fullName}
+                onChange={(e) => setGuardianForm(prev => ({ ...prev, fullName: e.target.value }))}
+                className="h-12"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone Number</Label>
+              <Input
+                value={guardianForm.phone}
+                onChange={(e) => setGuardianForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="+91 9876543210"
+                className="h-12"
+              />
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Changing this will update senior login credentials
+              </p>
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Senior Profile */}
