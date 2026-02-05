@@ -160,20 +160,31 @@ export default function GuardianOnboarding() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Ensure guardian role exists (use insert with onConflict to avoid duplicates)
-      const { error: roleError } = await supabase
+      // Step 1: Ensure guardian role exists
+      // First check if role already exists
+      const { data: existingRole } = await supabase
         .from('user_roles')
-        .upsert({ 
-          user_id: user.id, 
-          role: 'guardian' as const
-        }, { 
-          onConflict: 'user_id,role',
-          ignoreDuplicates: true 
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', 'guardian')
+        .maybeSingle();
 
-      if (roleError) {
-        console.error("Role assignment error:", roleError);
-        // Continue anyway - role might already exist
+      // Only insert if role doesn't exist
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ 
+            user_id: user.id, 
+            role: 'guardian' as const
+          });
+
+        if (roleError) {
+          console.error("Role assignment error:", roleError);
+          throw new Error('Failed to assign guardian role');
+        }
+        
+        // Small delay to ensure the role is committed before RLS check
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Step 2: Create senior record with all KYC data
@@ -186,7 +197,6 @@ export default function GuardianOnboarding() {
           photo_url: seniorData.photoUrl,
           family_pin: pin,
           guardian_email: user.email,
-          user_id: user.id,
           chronic_conditions: seniorData.chronicConditions.length > 0 
             ? seniorData.chronicConditions.filter(c => c !== 'None') 
             : null,
@@ -265,6 +275,8 @@ export default function GuardianOnboarding() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary">
+*** Delete File: 
+        .from('user_roles')
       {/* Header */}
       <header className="px-6 py-6 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto">
