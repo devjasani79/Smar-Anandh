@@ -64,6 +64,17 @@
 -- Dual-key validation function
 CREATE FUNCTION validate_family_pin_with_phone(guardian_phone TEXT, input_pin TEXT)
 RETURNS TABLE(senior_id UUID, senior_name TEXT, ...)
+-- Joins: seniors (family_pin) + guardian_senior_links (is_primary=true) + profiles (phone)
+```
+
+### Critical Data Flow
+```
+Guardian registers → profiles.phone stored
+Guardian onboards senior → seniors.family_pin stored
+                        → guardian_senior_links created (is_primary=true)
+Senior logs in → validate_family_pin_with_phone(phone, pin)
+              → Matches profiles.phone + seniors.family_pin
+              → Returns senior data via guardian_senior_links
 ```
 
 ### Session Modes
@@ -377,4 +388,21 @@ supabase/
 ---
 
 *Last Updated: February 2026*
-*Version: 1.0.0*
+*Version: 1.0.1*
+
+## Recent Fixes (Feb 5, 2026)
+
+### Database Changes
+1. **Removed `seniors.user_id` unique constraint** - Guardians can now have multiple seniors
+2. **Removed `seniors.user_id` foreign key** - Seniors don't need auth accounts
+3. **Updated INSERT policy on seniors** - Simplified to allow authenticated users
+
+### Code Changes  
+1. **GuardianOnboarding.tsx** - No longer sets `user_id` when creating seniors
+2. **Role check before senior insert** - Ensures guardian role exists before proceeding
+
+### Testing Notes
+If you encounter 403 errors during onboarding, try:
+1. Refresh the page and try again
+2. Log out and log back in to refresh the JWT token
+3. The policies are correct - it may be a caching issue
