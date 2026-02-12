@@ -122,10 +122,13 @@ export default function SeniorAuth() {
                   setPhone(e.target.value);
                   setError('');
                 }}
-                placeholder="+91 9876543210"
+                placeholder="9876543210"
                 className="h-16 text-2xl text-center rounded-2xl font-mono"
                 autoFocus
               />
+              <p className="text-xs text-muted-foreground text-center">
+                Guardian ka registered phone number daalen (with or without +91)
+              </p>
               {error && (
                 <p className="text-center text-destructive">{error}</p>
               )}

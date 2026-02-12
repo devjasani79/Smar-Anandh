@@ -42,7 +42,7 @@ const CHRONIC_CONDITIONS = [
 
 export default function GuardianOnboarding() {
   const navigate = useNavigate();
-  const { user, loading, linkedSeniors, refreshLinkedSeniors, guardianProfile } = useAuth();
+  const { user, loading, linkedSeniors, refreshLinkedSeniors, guardianProfile, signOut } = useAuth();
   const hasRedirected = useRef(false);
   
   const [step, setStep] = useState(1);
@@ -280,16 +280,28 @@ export default function GuardianOnboarding() {
       {/* Header */}
       <header className="px-6 py-6 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Heart className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <Heart className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
+                  Welcome to SmarAnandh
+                </h1>
+                <p className="text-sm text-muted-foreground">Let's set up your loved one's companion</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
-                Welcome to SmarAnandh
-              </h1>
-              <p className="text-sm text-muted-foreground">Let's set up your loved one's companion</p>
-            </div>
+            <button
+              onClick={async () => {
+                await signOut();
+                navigate('/', { replace: true });
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Logout
+            </button>
           </div>
           
           {/* Step indicators */}

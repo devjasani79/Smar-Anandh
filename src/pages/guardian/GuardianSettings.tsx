@@ -208,14 +208,13 @@ export default function GuardianSettings() {
 
     setSaving(true);
 
-    // Create senior
+    // Create senior (no user_id - seniors don't need auth accounts)
     const { data: newSenior, error: seniorError } = await supabase
       .from('seniors')
       .insert({
         name: newSeniorForm.name,
         language: newSeniorForm.language,
         family_pin: newSeniorForm.familyPin,
-        user_id: user.id,
         guardian_email: user.email,
         chronic_conditions: newSeniorForm.chronicConditions
           .split(',')
