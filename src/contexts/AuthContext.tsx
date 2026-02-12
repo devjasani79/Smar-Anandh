@@ -219,18 +219,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error };
 
     if (data.user) {
-      // Create profile with phone
-      await supabase.from('profiles').insert({
+      // Create profile with phone (use upsert to avoid duplicates)
+      await supabase.from('profiles').upsert({
         user_id: data.user.id,
         full_name: fullName,
         phone: phone
-      });
+      }, { onConflict: 'user_id' });
 
-      // Assign guardian role
-      await supabase.from('user_roles').insert({
+      // Assign guardian role (ignore if already exists)
+      await supabase.from('user_roles').upsert({
         user_id: data.user.id,
         role: 'guardian' as AppRole
-      });
+      }, { onConflict: 'user_id,role' });
     }
 
     return { error: null };
