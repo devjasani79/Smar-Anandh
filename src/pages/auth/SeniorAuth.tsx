@@ -53,13 +53,19 @@ export default function SeniorAuth() {
     setIsValidating(true);
     setError('');
 
-    const result = await validateDualKey(phone, submittedPin);
+    try {
+      const result = await validateDualKey(phone.trim(), submittedPin);
 
-    if (result.success) {
-      toast.success('Welcome!');
-      navigate('/app');
-    } else {
-      setError(result.error || 'Invalid credentials');
+      if (result.success) {
+        toast.success('Swagat hai! 🙏');
+        navigate('/app');
+      } else {
+        setError(result.error || 'Phone number ya PIN galat hai');
+        setPin('');
+      }
+    } catch (err) {
+      console.error('Senior auth error:', err);
+      setError('Kuch galat ho gaya. Dobara try karein.');
       setPin('');
     }
 

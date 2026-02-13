@@ -160,8 +160,7 @@ export default function GuardianOnboarding() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Ensure guardian role exists
-      // First check if role already exists
+      // Step 1: Ensure guardian role exists (check-then-insert pattern)
       const { data: existingRole } = await supabase
         .from('user_roles')
         .select('id')
@@ -169,25 +168,18 @@ export default function GuardianOnboarding() {
         .eq('role', 'guardian')
         .maybeSingle();
 
-      // Only insert if role doesn't exist
       if (!existingRole) {
         const { error: roleError } = await supabase
           .from('user_roles')
-          .insert({ 
-            user_id: user.id, 
-            role: 'guardian' as const
-          });
+          .insert({ user_id: user.id, role: 'guardian' as const });
 
-        if (roleError) {
+        if (roleError && !roleError.message.includes('duplicate')) {
           console.error("Role assignment error:", roleError);
           throw new Error('Failed to assign guardian role');
         }
-        
-        // Small delay to ensure the role is committed before RLS check
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // Step 2: Create senior record with all KYC data
+      // Step 2: Create senior record
       const { data: senior, error: seniorError } = await supabase
         .from('seniors')
         .insert({
@@ -197,17 +189,12 @@ export default function GuardianOnboarding() {
           photo_url: seniorData.photoUrl,
           family_pin: pin,
           guardian_email: user.email,
-          chronic_conditions: seniorData.chronicConditions.length > 0 
-            ? seniorData.chronicConditions.filter(c => c !== 'None') 
+          chronic_conditions: seniorData.chronicConditions.filter(c => c !== 'None').length > 0
+            ? seniorData.chronicConditions.filter(c => c !== 'None')
             : null,
-          // Store as array format for consistency
-          emergency_contacts: seniorData.emergencyContact ? [
-            {
-              phone: seniorData.emergencyContact,
-              name: guardianProfile?.fullName || 'Guardian',
-              relationship: 'Primary Guardian'
-            }
-          ] : []
+          emergency_contacts: seniorData.emergencyContact
+            ? [{ phone: seniorData.emergencyContact, name: guardianProfile?.fullName || 'Guardian', relationship: 'Primary Guardian' }]
+            : []
         })
         .select()
         .single();
@@ -217,11 +204,9 @@ export default function GuardianOnboarding() {
         throw new Error(seniorError.message || 'Failed to create senior profile');
       }
 
-      if (!senior) {
-        throw new Error('Senior profile was not created');
-      }
+      if (!senior) throw new Error('Senior profile was not created');
 
-      // Step 3: Create guardian-senior link
+      // Step 3: Link guardian to senior
       const { error: linkError } = await supabase
         .from('guardian_senior_links')
         .insert({
@@ -233,24 +218,14 @@ export default function GuardianOnboarding() {
 
       if (linkError) {
         console.error("Link creation error:", linkError);
-        // Don't throw - senior was created successfully
       }
 
-      // Step 4: Create default joy preferences
-      await supabase
-        .from('joy_preferences')
-        .insert({
-          senior_id: senior.id,
-          ai_suggestions_enabled: true
-        });
+      // Step 4: Create default joy preferences (non-critical)
+      try { await supabase.from('joy_preferences').insert({ senior_id: senior.id, ai_suggestions_enabled: true }); } catch { /* non-critical */ }
 
       await refreshLinkedSeniors();
       toast.success('Setup complete! Welcome to SmarAnandh 🙏');
-      
-      // Use setTimeout to ensure state updates before navigation
-      setTimeout(() => {
-        navigate('/guardian', { replace: true });
-      }, 100);
+      setTimeout(() => navigate('/guardian', { replace: true }), 100);
       
     } catch (error: any) {
       console.error('Onboarding error:', error);
