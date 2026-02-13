@@ -42,7 +42,7 @@ const CHRONIC_CONDITIONS = [
 
 export default function GuardianOnboarding() {
   const navigate = useNavigate();
-  const { user, loading, linkedSeniors, refreshLinkedSeniors, guardianProfile, signOut } = useAuth();
+  const { user, loading, linkedSeniors, refreshLinkedSeniors, guardianProfile } = useAuth();
   const hasRedirected = useRef(false);
   
   const [step, setStep] = useState(1);
@@ -160,26 +160,23 @@ export default function GuardianOnboarding() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Ensure guardian role exists (check-then-insert pattern)
-      const { data: existingRole } = await supabase
+      // Step 1: Ensure guardian role exists (use insert with onConflict to avoid duplicates)
+      const { error: roleError } = await supabase
         .from('user_roles')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('role', 'guardian')
-        .maybeSingle();
+        .upsert({ 
+          user_id: user.id, 
+          role: 'guardian' as const
+        }, { 
+          onConflict: 'user_id,role',
+          ignoreDuplicates: true 
+        });
 
-      if (!existingRole) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({ user_id: user.id, role: 'guardian' as const });
-
-        if (roleError && !roleError.message.includes('duplicate')) {
-          console.error("Role assignment error:", roleError);
-          throw new Error('Failed to assign guardian role');
-        }
+      if (roleError) {
+        console.error("Role assignment error:", roleError);
+        // Continue anyway - role might already exist
       }
 
-      // Step 2: Create senior record
+      // Step 2: Create senior record with all KYC data
       const { data: senior, error: seniorError } = await supabase
         .from('seniors')
         .insert({
@@ -189,12 +186,18 @@ export default function GuardianOnboarding() {
           photo_url: seniorData.photoUrl,
           family_pin: pin,
           guardian_email: user.email,
-          chronic_conditions: seniorData.chronicConditions.filter(c => c !== 'None').length > 0
-            ? seniorData.chronicConditions.filter(c => c !== 'None')
+          user_id: user.id,
+          chronic_conditions: seniorData.chronicConditions.length > 0 
+            ? seniorData.chronicConditions.filter(c => c !== 'None') 
             : null,
-          emergency_contacts: seniorData.emergencyContact
-            ? [{ phone: seniorData.emergencyContact, name: guardianProfile?.fullName || 'Guardian', relationship: 'Primary Guardian' }]
-            : []
+          // Store as array format for consistency
+          emergency_contacts: seniorData.emergencyContact ? [
+            {
+              phone: seniorData.emergencyContact,
+              name: guardianProfile?.fullName || 'Guardian',
+              relationship: 'Primary Guardian'
+            }
+          ] : []
         })
         .select()
         .single();
@@ -204,9 +207,11 @@ export default function GuardianOnboarding() {
         throw new Error(seniorError.message || 'Failed to create senior profile');
       }
 
-      if (!senior) throw new Error('Senior profile was not created');
+      if (!senior) {
+        throw new Error('Senior profile was not created');
+      }
 
-      // Step 3: Link guardian to senior
+      // Step 3: Create guardian-senior link
       const { error: linkError } = await supabase
         .from('guardian_senior_links')
         .insert({
@@ -218,14 +223,24 @@ export default function GuardianOnboarding() {
 
       if (linkError) {
         console.error("Link creation error:", linkError);
+        // Don't throw - senior was created successfully
       }
 
-      // Step 4: Create default joy preferences (non-critical)
-      try { await supabase.from('joy_preferences').insert({ senior_id: senior.id, ai_suggestions_enabled: true }); } catch { /* non-critical */ }
+      // Step 4: Create default joy preferences
+      await supabase
+        .from('joy_preferences')
+        .insert({
+          senior_id: senior.id,
+          ai_suggestions_enabled: true
+        });
 
       await refreshLinkedSeniors();
       toast.success('Setup complete! Welcome to SmarAnandh 🙏');
-      setTimeout(() => navigate('/guardian', { replace: true }), 100);
+      
+      // Use setTimeout to ensure state updates before navigation
+      setTimeout(() => {
+        navigate('/guardian', { replace: true });
+      }, 100);
       
     } catch (error: any) {
       console.error('Onboarding error:', error);
@@ -250,33 +265,19 @@ export default function GuardianOnboarding() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary">
-*** Delete File: 
-        .from('user_roles')
       {/* Header */}
       <header className="px-6 py-6 border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Heart className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
-                  Welcome to SmarAnandh
-                </h1>
-                <p className="text-sm text-muted-foreground">Let's set up your loved one's companion</p>
-              </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <Heart className="w-6 h-6 text-primary-foreground" />
             </div>
-            <button
-              onClick={async () => {
-                await signOut();
-                navigate('/', { replace: true });
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Logout
-            </button>
+            <div>
+              <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
+                Welcome to SmarAnandh
+              </h1>
+              <p className="text-sm text-muted-foreground">Let's set up your loved one's companion</p>
+            </div>
           </div>
           
           {/* Step indicators */}

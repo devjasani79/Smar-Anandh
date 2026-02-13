@@ -53,19 +53,13 @@ export default function SeniorAuth() {
     setIsValidating(true);
     setError('');
 
-    try {
-      const result = await validateDualKey(phone.trim(), submittedPin);
+    const result = await validateDualKey(phone, submittedPin);
 
-      if (result.success) {
-        toast.success('Swagat hai! 🙏');
-        navigate('/app');
-      } else {
-        setError(result.error || 'Phone number ya PIN galat hai');
-        setPin('');
-      }
-    } catch (err) {
-      console.error('Senior auth error:', err);
-      setError('Kuch galat ho gaya. Dobara try karein.');
+    if (result.success) {
+      toast.success('Welcome!');
+      navigate('/app');
+    } else {
+      setError(result.error || 'Invalid credentials');
       setPin('');
     }
 
@@ -128,13 +122,10 @@ export default function SeniorAuth() {
                   setPhone(e.target.value);
                   setError('');
                 }}
-                placeholder="9876543210"
+                placeholder="+91 9876543210"
                 className="h-16 text-2xl text-center rounded-2xl font-mono"
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground text-center">
-                Guardian ka registered phone number daalen (with or without +91)
-              </p>
               {error && (
                 <p className="text-center text-destructive">{error}</p>
               )}
