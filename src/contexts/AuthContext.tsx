@@ -33,32 +33,21 @@ interface SeniorSession {
 type SessionMode = 'guardian' | 'senior' | null;
 
 interface AuthContextType {
-  // Guardian auth state
   user: User | null;
   session: Session | null;
   loading: boolean;
   role: AppRole | null;
   guardianProfile: GuardianProfile | null;
   linkedSeniors: LinkedSenior[];
-  
-  // Session mode (for switching between guardian/senior views)
   sessionMode: SessionMode;
   seniorSession: SeniorSession | null;
-  
-  // Guardian auth methods
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  
-  // Senior mode methods
   enterSeniorMode: (pin: string, selectedSeniorId?: string) => Promise<{ success: boolean; error?: string }>;
   exitSeniorMode: () => void;
-  
-  // Dual-key auth for standalone senior access (phone + PIN)
   validateDualKey: (phone: string, pin: string) => Promise<{ success: boolean; error?: string }>;
-  
-  // Senior management
   refreshLinkedSeniors: () => Promise<void>;
 }
 
@@ -66,6 +55,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_MODE_KEY = 'smaranandh_session_mode';
 const SENIOR_SESSION_KEY = 'smaranandh_senior_session';
+
+// Normalize phone: strip everything except digits, remove leading 91 if 12+ digits
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (digits.length >= 12 && digits.startsWith('91')) {
+    return digits.slice(2);
+  }
+  return digits;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -81,97 +79,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedMode = localStorage.getItem(SESSION_MODE_KEY) as SessionMode;
     const storedSeniorSession = localStorage.getItem(SENIOR_SESSION_KEY);
-    
-    if (storedMode) {
-      setSessionMode(storedMode);
-    }
+    if (storedMode) setSessionMode(storedMode);
     if (storedSeniorSession) {
-      try {
-        setSeniorSession(JSON.parse(storedSeniorSession));
-      } catch {
-        localStorage.removeItem(SENIOR_SESSION_KEY);
-      }
+      try { setSeniorSession(JSON.parse(storedSeniorSession)); } catch { localStorage.removeItem(SENIOR_SESSION_KEY); }
     }
   }, []);
 
-  // Persist session mode
   useEffect(() => {
-    if (sessionMode) {
-      localStorage.setItem(SESSION_MODE_KEY, sessionMode);
-    } else {
-      localStorage.removeItem(SESSION_MODE_KEY);
-    }
+    if (sessionMode) localStorage.setItem(SESSION_MODE_KEY, sessionMode);
+    else localStorage.removeItem(SESSION_MODE_KEY);
   }, [sessionMode]);
 
-  // Persist senior session
   useEffect(() => {
-    if (seniorSession) {
-      localStorage.setItem(SENIOR_SESSION_KEY, JSON.stringify(seniorSession));
-    } else {
-      localStorage.removeItem(SENIOR_SESSION_KEY);
-    }
+    if (seniorSession) localStorage.setItem(SENIOR_SESSION_KEY, JSON.stringify(seniorSession));
+    else localStorage.removeItem(SENIOR_SESSION_KEY);
   }, [seniorSession]);
 
-  const fetchGuardianProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name, phone')
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (data && user?.email) {
-      setGuardianProfile({
-        id: data.id,
-        fullName: data.full_name,
-        phone: data.phone,
-        email: user.email
-      });
+  const fetchGuardianProfile = useCallback(async (userId: string, email?: string) => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, phone')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (data) {
+        setGuardianProfile({
+          id: data.id,
+          fullName: data.full_name,
+          phone: data.phone,
+          email: email || ''
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching guardian profile:', err);
     }
-  }, [user?.email]);
+  }, []);
 
   const fetchUserRole = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (data) {
-      setRole(data.role);
+    try {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data) setRole(data.role);
+    } catch (err) {
+      console.error('Error fetching user role:', err);
     }
   }, []);
 
   const refreshLinkedSeniors = useCallback(async () => {
     if (!user) return;
-    
-    const { data } = await supabase.rpc('get_guardian_seniors', { 
-      guardian_user_id: user.id 
-    });
-    
-    if (data) {
-      setLinkedSeniors(data.map(s => ({
-        id: s.senior_id,
-        name: s.senior_name,
-        preferredName: s.preferred_name,
-        photoUrl: s.photo_url,
-        language: s.language,
-        isPrimary: s.is_primary || false
-      })));
+    try {
+      const { data } = await supabase.rpc('get_guardian_seniors', { guardian_user_id: user.id });
+      if (data) {
+        setLinkedSeniors(data.map(s => ({
+          id: s.senior_id,
+          name: s.senior_name,
+          preferredName: s.preferred_name,
+          photoUrl: s.photo_url,
+          language: s.language,
+          isPrimary: s.is_primary || false
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching linked seniors:', err);
     }
   }, [user]);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          // Defer Supabase calls with setTimeout to prevent deadlock
           setTimeout(() => {
             fetchUserRole(currentSession.user.id);
-            fetchGuardianProfile(currentSession.user.id);
+            fetchGuardianProfile(currentSession.user.id, currentSession.user.email);
           }, 0);
         } else {
           setRole(null);
@@ -183,13 +169,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
         fetchUserRole(existingSession.user.id);
-        fetchGuardianProfile(existingSession.user.id);
+        fetchGuardianProfile(existingSession.user.id, existingSession.user.email);
       }
       setLoading(false);
     });
@@ -197,7 +182,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [fetchUserRole, fetchGuardianProfile]);
 
-  // Fetch linked seniors when user is authenticated and is a guardian
   useEffect(() => {
     if (user && role === 'guardian') {
       refreshLinkedSeniors();
@@ -205,42 +189,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, role, refreshLinkedSeniors]);
 
   const signUp = async (email: string, password: string, fullName: string, phone: string) => {
-    const redirectUrl = `${window.location.origin}/guardian`;
-    
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { full_name: fullName }
-      }
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/guardian`,
+          data: { full_name: fullName }
+        }
+      });
 
-    if (error) return { error };
+      if (error) return { error };
+      if (!data.user) return { error: new Error('Signup failed - no user returned') };
 
-    if (data.user) {
-      // Create profile with phone (use upsert to avoid duplicates)
-      await supabase.from('profiles').upsert({
+      // Create profile - use upsert to handle race conditions
+      const { error: profileError } = await supabase.from('profiles').upsert({
         user_id: data.user.id,
         full_name: fullName,
-        phone: phone
+        phone: normalizePhone(phone)
       }, { onConflict: 'user_id' });
+      
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Non-fatal: continue even if profile creation has issues
+      }
 
-      // Assign guardian role (ignore if already exists)
-      await supabase.from('user_roles').upsert({
-        user_id: data.user.id,
-        role: 'guardian' as AppRole
-      }, { onConflict: 'user_id,role' });
+      // Assign guardian role - check first, then insert
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', data.user.id)
+        .eq('role', 'guardian')
+        .maybeSingle();
+
+      if (!existingRole) {
+        const { error: roleError } = await supabase.from('user_roles').insert({
+          user_id: data.user.id,
+          role: 'guardian' as AppRole
+        });
+        if (roleError) console.error('Role assignment error:', roleError);
+      }
+
+      return { error: null };
+    } catch (err: any) {
+      console.error('SignUp exception:', err);
+      return { error: err };
     }
-
-    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) {
-      setSessionMode('guardian');
-    }
+    if (!error) setSessionMode('guardian');
     return { error };
   };
 
@@ -267,7 +266,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'PIN must be 4 digits' };
     }
 
-    // Find matching senior from linked seniors
     const targetSenior = selectedSeniorId 
       ? linkedSeniors.find(s => s.id === selectedSeniorId)
       : linkedSeniors.find(s => s.isPrimary) || linkedSeniors[0];
@@ -276,33 +274,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'No senior linked to this account' };
     }
 
-    // Validate PIN against the senior's family_pin
-    const { data, error } = await supabase
-      .from('seniors')
-      .select('id, family_pin')
-      .eq('id', targetSenior.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('seniors')
+        .select('id, family_pin')
+        .eq('id', targetSenior.id)
+        .single();
 
-    if (error || !data) {
-      return { success: false, error: 'Unable to validate PIN' };
+      if (error || !data) return { success: false, error: 'Unable to validate PIN' };
+      if (data.family_pin !== pin) return { success: false, error: 'Invalid PIN. Please try again.' };
+
+      setSeniorSession({
+        seniorId: targetSenior.id,
+        seniorName: targetSenior.name,
+        preferredName: targetSenior.preferredName,
+        photoUrl: targetSenior.photoUrl,
+        language: targetSenior.language,
+        guardianId: user!.id
+      });
+      setSessionMode('senior');
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Something went wrong' };
     }
-
-    if (data.family_pin !== pin) {
-      return { success: false, error: 'Invalid PIN. Please try again.' };
-    }
-
-    // Set senior session
-    setSeniorSession({
-      seniorId: targetSenior.id,
-      seniorName: targetSenior.name,
-      preferredName: targetSenior.preferredName,
-      photoUrl: targetSenior.photoUrl,
-      language: targetSenior.language,
-      guardianId: user!.id
-    });
-    setSessionMode('senior');
-
-    return { success: true };
   };
 
   const exitSeniorMode = () => {
@@ -315,14 +309,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
       return { success: false, error: 'PIN must be 4 digits' };
     }
-
-    if (!phone || phone.length < 10) {
+    if (!phone || phone.replace(/[^0-9]/g, '').length < 10) {
       return { success: false, error: 'Please enter a valid phone number' };
     }
 
     try {
+      // Normalize the phone for the RPC call
+      const normalizedPhone = normalizePhone(phone);
+      
       const { data, error } = await supabase.rpc('validate_family_pin_with_phone', {
-        guardian_phone: phone,
+        guardian_phone: normalizedPhone,
         input_pin: pin
       });
 
@@ -332,11 +328,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!data || data.length === 0) {
-        return { success: false, error: 'Invalid phone number or PIN' };
+        // Try with the raw phone too in case stored format differs
+        const { data: data2, error: error2 } = await supabase.rpc('validate_family_pin_with_phone', {
+          guardian_phone: phone.trim(),
+          input_pin: pin
+        });
+
+        if (error2 || !data2 || data2.length === 0) {
+          return { success: false, error: 'Phone number ya PIN galat hai. Guardian ka registered number use karein.' };
+        }
+
+        const result = data2[0];
+        setSeniorSession({
+          seniorId: result.senior_id,
+          seniorName: result.senior_name,
+          preferredName: result.preferred_name,
+          photoUrl: result.photo_url,
+          language: result.senior_language,
+          guardianId: result.guardian_id
+        });
+        setSessionMode('senior');
+        return { success: true };
       }
 
       const result = data[0];
-      
       setSeniorSession({
         seniorId: result.senior_id,
         seniorName: result.senior_name,
@@ -346,7 +361,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         guardianId: result.guardian_id
       });
       setSessionMode('senior');
-
       return { success: true };
     } catch (err) {
       console.error('Dual-key validation exception:', err);
@@ -356,22 +370,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      role,
-      guardianProfile,
-      linkedSeniors,
-      sessionMode,
-      seniorSession,
-      signUp,
-      signIn,
-      signOut,
-      resetPassword,
-      enterSeniorMode,
-      exitSeniorMode,
-      validateDualKey,
-      refreshLinkedSeniors
+      user, session, loading, role, guardianProfile, linkedSeniors,
+      sessionMode, seniorSession,
+      signUp, signIn, signOut, resetPassword,
+      enterSeniorMode, exitSeniorMode, validateDualKey, refreshLinkedSeniors
     }}>
       {children}
     </AuthContext.Provider>
