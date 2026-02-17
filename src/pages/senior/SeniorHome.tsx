@@ -74,6 +74,11 @@ export default function SeniorHome() {
     }
   };
 
+  const handleLogoutSenior = () => {
+    exitSeniorMode();
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe-bottom">
       {/* Header with greeting */}
@@ -98,7 +103,16 @@ export default function SeniorHome() {
             </p>
           </div>
           <div className="flex gap-2">
-            {/* Exit senior mode (only if guardian is logged in) */}
+            {/* Logout from senior mode */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogoutSenior}
+              className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center"
+              title="Logout"
+            >
+              <LogOut className="w-6 h-6 text-destructive" />
+            </motion.button>
+            {/* Exit to guardian (only if guardian is logged in) */}
             {user && (
               <motion.button
                 whileTap={{ scale: 0.95 }}
@@ -106,16 +120,9 @@ export default function SeniorHome() {
                 className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center"
                 title="Exit to Guardian Dashboard"
               >
-                <LogOut className="w-6 h-6 text-muted-foreground" />
+                <Settings className="w-6 h-6 text-muted-foreground" />
               </motion.button>
             )}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowSettingsGate(true)}
-              className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center"
-            >
-              <Settings className="w-6 h-6 text-muted-foreground" />
-            </motion.button>
           </div>
         </div>
       </motion.header>

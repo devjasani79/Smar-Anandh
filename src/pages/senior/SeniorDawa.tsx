@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Clock, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { MedicineCard } from '@/components/MedicineCard';
 import { TactileButton } from '@/components/TactileButton';
 import { toast } from 'sonner';
 
