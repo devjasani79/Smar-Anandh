@@ -12,7 +12,8 @@ import {
   Heart,
   Calendar,
   MapPin,
-  AlertCircle
+  AlertCircle,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,7 +43,7 @@ const CHRONIC_CONDITIONS = [
 
 export default function GuardianOnboarding() {
   const navigate = useNavigate();
-  const { user, loading, linkedSeniors, refreshLinkedSeniors, guardianProfile } = useAuth();
+  const { user, loading, linkedSeniors, refreshLinkedSeniors, guardianProfile, signOut } = useAuth();
   const hasRedirected = useRef(false);
   
   const [step, setStep] = useState(1);
@@ -272,12 +273,19 @@ export default function GuardianOnboarding() {
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
               <Heart className="w-6 h-6 text-primary-foreground" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="text-xl font-bold text-foreground" style={{ fontFamily: 'Playfair Display, serif' }}>
                 Welcome to SmarAnandh
               </h1>
               <p className="text-sm text-muted-foreground">Let's set up your loved one's companion</p>
             </div>
+            <button
+              onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-destructive hover:bg-destructive/10 transition-colors text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
           </div>
           
           {/* Step indicators */}
