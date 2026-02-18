@@ -49,7 +49,7 @@ export function HeroCarousel({ fullWidth = false }: HeroCarouselProps) {
 
   const containerClass = fullWidth
     ? "relative w-full h-full"
-    : "relative w-full h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden rounded-3xl";
+    : "relative w-full h-[300px] md:h-[450px] lg:h-[550px] xl:h-[600px] overflow-hidden rounded-3xl";
 
   return (
     <div 
