@@ -236,6 +236,26 @@ export default function GuardianOnboarding() {
         });
 
       await refreshLinkedSeniors();
+      
+      // Send welcome email (fire and forget)
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        fetch(`https://${projectId}.supabase.co/functions/v1/send-welcome-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            guardian_email: user.email,
+            guardian_name: guardianProfile?.fullName || '',
+            guardian_phone: guardianProfile?.phone || '',
+            senior_name: seniorData.name,
+            senior_preferred_name: seniorData.preferredName,
+            family_pin: pin,
+          }),
+        }).catch(console.error);
+      } catch (e) {
+        console.error('Welcome email error:', e);
+      }
+      
       toast.success('Setup complete! Welcome to SmarAnandh 🙏');
       
       // Use setTimeout to ensure state updates before navigation

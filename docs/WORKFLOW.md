@@ -2,113 +2,47 @@
 
 ## 🙏 Project Overview
 
-**SmarAnandh** (स्मरआनंद - "Joyful Remembrance") is a senior care companion app designed for Indian families. It enables caregivers (Guardians) to manage their elderly loved ones' (Seniors) medication schedules, entertainment, and safety — while providing seniors with an ultra-simple, high-contrast interface.
+**SmarAnandh** (स्मरआनंद - "Joyful Remembrance") is a senior care companion app for Indian families. Guardians manage elderly loved ones' medications, entertainment, and safety while seniors get an ultra-simple, high-contrast Hinglish interface.
+
+**Problem:** 140M+ Indian seniors, 65% miss medications, 70% of families live apart.
+**Solution:** Dual-mode app — Guardian dashboard + Senior companion with PIN-based access.
 
 ---
 
-## 📋 Table of Contents
+## 🏗️ Architecture
 
-1. [Architecture Overview](#architecture-overview)
-2. [Authentication System](#authentication-system)
-3. [User Roles & Session Modes](#user-roles--session-modes)
-4. [Database Schema](#database-schema)
-5. [Completed Features](#completed-features)
-6. [Current Status](#current-status)
-7. [Future Roadmap](#future-roadmap)
-8. [Technical Stack](#technical-stack)
-9. [File Structure](#file-structure)
-10. [Testing Guide](#testing-guide)
+### Dual-Mode System
+- **Guardian Mode** (`/guardian/*`): Email/password auth, full dashboard, medication management, settings
+- **Senior Mode** (`/app`, `/senior/*`): Phone + 4-digit PIN auth, simplified UI, 80px+ touch targets, Hinglish
+
+### Tech Stack
+- **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui + Framer Motion
+- **Backend:** Lovable Cloud (Supabase) — PostgreSQL, Auth, Storage, Edge Functions
+- **Fonts:** Playfair Display (headings), Nunito (body), Poppins (UI)
 
 ---
 
-## 🏗️ Architecture Overview
+## 🔐 Authentication
 
-### Core Concept: Dual-Mode Application
+### Guardian: Email + Password (Supabase Auth)
+1. Register with email, password, name, phone
+2. Complete Senior KYC (name, photo, health info)
+3. Set 4-digit Family PIN
+4. Welcome email sent automatically
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SmarAnandh App                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────────────┐    ┌─────────────────────┐        │
-│  │   GUARDIAN MODE     │    │    SENIOR MODE      │        │
-│  │   (/guardian/*)     │    │    (/senior/*, /app)│        │
-│  │                     │    │                     │        │
-│  │ • Email/Password    │    │ • Phone + PIN       │        │
-│  │ • Full dashboard    │    │ • Simplified UI     │        │
-│  │ • Manage seniors    │    │ • Large buttons     │        │
-│  │ • Add medications   │    │ • High contrast     │        │
-│  │ • View analytics    │    │ • Hinglish text     │        │
-│  │ • Settings access   │    │ • PIN-protected     │        │
-│  └─────────────────────┘    └─────────────────────┘        │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+### Senior: Dual-Key (Phone + PIN)
+1. Enter Guardian's phone number
+2. Enter Family PIN
+3. Validated via `validate_family_pin_with_phone()` RPC
+4. Session stored in localStorage
 
 ---
 
-## 🔐 Authentication System
-
-### Guardian Authentication (Email/Password)
-- Uses Supabase Auth with email confirmation
-- After signup, guardian completes Senior KYC onboarding
-- Creates a 4-digit Family PIN for senior access
-
-### Senior Authentication (Phone + PIN - Dual-Key System)
-1. Senior enters **Guardian's Phone Number**
-2. Senior enters **4-digit Family PIN**
-3. System validates via `validate_family_pin_with_phone()` RPC function
-4. On success, creates a **SeniorSession** in localStorage
-
-```sql
--- Dual-key validation function
-CREATE FUNCTION validate_family_pin_with_phone(guardian_phone TEXT, input_pin TEXT)
-RETURNS TABLE(senior_id UUID, senior_name TEXT, ...)
-```
-
-### Session Modes
-- **SessionMode = 'guardian'**: Full access to dashboard
-- **SessionMode = 'senior'**: Locked to simplified interface
-- PIN required to exit senior mode or access settings
-
----
-
-## 👥 User Roles & Session Modes
-
-### Database Roles
-```typescript
-type AppRole = 'guardian' | 'senior';
-```
-
-### AuthContext State
-```typescript
-interface AuthContextType {
-  // Guardian (Supabase Auth)
-  user: User | null;
-  session: Session | null;
-  guardianProfile: GuardianProfile | null;
-  linkedSeniors: LinkedSenior[];
-  
-  // Session Mode
-  sessionMode: 'guardian' | 'senior' | null;
-  seniorSession: SeniorSession | null;
-  
-  // Methods
-  signUp, signIn, signOut, resetPassword
-  enterSeniorMode, exitSeniorMode
-  validateDualKey  // Phone + PIN
-}
-```
-
----
-
-## 🗄️ Database Schema
-
-### Core Tables
+## 🗄️ Database Tables
 
 | Table | Purpose |
 |-------|---------|
-| `profiles` | Guardian profile (name, phone, avatar) |
+| `profiles` | Guardian profile (name, phone) |
 | `user_roles` | Role assignments (guardian/senior) |
 | `seniors` | Senior profiles with Family PIN |
 | `guardian_senior_links` | Guardian ↔ Senior relationships |
@@ -120,160 +54,43 @@ interface AuthContextType {
 | `family_members` | Emergency contacts |
 | `notifications` | Alerts & reminders |
 
-### Key RPC Functions
-- `validate_family_pin_with_phone(phone, pin)` - Senior login
-- `get_guardian_seniors(user_id)` - List linked seniors
-- `is_guardian_of(user_id, senior_id)` - RLS helper
-- `has_role(user_id, role)` - Role check
-
 ---
 
 ## ✅ Completed Features
 
-### Phase 1: Foundation ✅
-- [x] Project scaffolding with Vite + React + TypeScript
-- [x] Tailwind CSS with custom design tokens
-- [x] Supabase integration (Lovable Cloud)
-- [x] Database schema with RLS policies
+### Authentication & Onboarding
+- Guardian signup/login with email confirmation
+- Senior dual-key auth (phone + PIN)
+- Guardian onboarding with Senior KYC
+- Logout buttons on all screens
+- Password reset flow
 
-### Phase 2: Authentication ✅
-- [x] Guardian signup/login (email/password)
-- [x] Email confirmation flow
-- [x] Password reset
-- [x] Dual-key senior auth (phone + PIN)
-- [x] Session persistence with localStorage
+### Guardian Dashboard
+- Dashboard with real-time activity feed, medication logs, health vitals
+- Medication management (CRUD)
+- Joy activities configuration (Suno, Dekho, Yaadein, Khelo)
+- Settings: edit guardian profile, edit senior profile, emergency contacts
+- Add/delete seniors, delete account
+- Senior selector for multi-senior guardians
 
-### Phase 3: Guardian Dashboard ✅
-- [x] Dashboard home with senior cards
-- [x] Medication management (add/edit/delete)
-- [x] Settings page with profile management
-- [x] Guardian profile editing (name, phone)
-- [x] Add/remove seniors
-- [x] Update Family PIN
-- [x] Delete senior/account functionality
-- [x] Photo uploads for seniors
-- [x] Emergency contacts management
+### Senior Interface
+- Home screen with Hinglish greeting, photo, status pulse
+- **DAWA** (💊): View medications, mark as taken per time slot
+- **KHUSHI** (😊): YouTube bhajans, serials, photo albums, games, mood check-in
+- **MADAD** (🆘): Emergency SOS with 5-second countdown, quick messages
+- **PARIVAAR** (📞): Family contact directory with call/video/message buttons
 
-### Phase 4: Senior Interface ✅
-- [x] Simplified home screen with large tiles
-- [x] DAWA (Medicine) - View and mark taken
-- [x] KHUSHI (Joy) - Music, Videos, Photos, Games
-- [x] MADAD (Help) - Emergency SOS, quick messages
-- [x] PARIVAAR (Family) - Contact family members
-- [x] Hinglish UI text throughout
-- [x] YouTube integration for bhajans & serials
-- [x] Mood tracking
+### Landing Page
+- Full-width hero carousel (responsive: 45vh mobile, 55-60vh desktop)
+- Stats bar, features grid, 3-step setup guide
+- Testimonials with ratings, CTA section
+- Responsive navbar with mobile menu
 
-### Phase 5: Landing Page ✅
-- [x] Hero carousel with overlay content
-- [x] Responsive navbar with mobile menu
-- [x] Feature highlights section
-- [x] Testimonials
-- [x] "How It Works" guide
-- [x] CTA buttons
-
-### Phase 6: Backend Functions ✅
-- [x] `medication-reminders` edge function (cron job)
-- [x] `log-medication` edge function (mark taken/snooze)
-- [x] Notification system for missed doses
-- [x] Activity logging
-
----
-
-## 📍 Current Status
-
-### Working Features
-1. **Guardian Registration Flow**
-   - Sign up with email, password, name, phone
-   - Complete Senior KYC (name, photo, health info)
-   - Set 4-digit Family PIN
-   - Redirect to dashboard
-
-2. **Senior Login Flow**
-   - Enter guardian's phone number
-   - Enter Family PIN
-   - Access simplified senior interface
-
-3. **Guardian Dashboard**
-   - View linked seniors
-   - Manage medications
-   - Edit guardian profile (name, phone)
-   - Settings with logout, delete
-
-4. **Senior Interface**
-   - All 4 main tiles functional (Dawa, Khushi, Madad, Parivaar)
-   - YouTube playback for bhajans and serials
-   - Mood check-in
-   - High-contrast, large buttons
-   - PIN-protected settings access
-
-5. **Medication Reminders**
-   - Edge function checks for due medications
-   - Creates notification for guardians
-   - Tracks missed doses
-
-### Known Limitations
-- Photo albums in Joy section are placeholder
-- Push notifications not yet connected to devices
-- Real phone/video calls not integrated
-
----
-
-## 🚀 Future Roadmap
-
-### Phase 7: Enhanced Medications
-- [ ] OCR prescription scanning
-- [ ] Medicine image recognition
-- [ ] Smart refill reminders
-- [ ] Pharmacy integration
-
-### Phase 8: Push Notifications
-- [ ] Device push notifications (Firebase/OneSignal)
-- [ ] SMS alerts for missed doses
-- [ ] Email summaries for guardians
-- [ ] Cron job scheduler in Supabase
-
-### Phase 9: Health Tracking
-- [ ] Vital signs logging (BP, sugar, weight)
-- [ ] Trend visualizations
-- [ ] Health report exports
-- [ ] Doctor appointment reminders
-
-### Phase 10: Communication
-- [ ] In-app voice/video calls (WebRTC)
-- [ ] Voice messages
-- [ ] Family photo sharing
-- [ ] Activity feed for guardians
-
-### Phase 11: AI Enhancements
-- [ ] Smart medication scheduling suggestions
-- [ ] Mood detection from interactions
-- [ ] Personalized content recommendations
-- [ ] Voice assistant integration
-
----
-
-## 🛠️ Technical Stack
-
-### Frontend
-- **Framework**: React 18 + TypeScript
-- **Build**: Vite
-- **Styling**: Tailwind CSS + shadcn/ui
-- **Animation**: Framer Motion
-- **Routing**: React Router v6
-- **State**: React Context + TanStack Query
-
-### Backend (Lovable Cloud / Supabase)
-- **Database**: PostgreSQL
-- **Auth**: Supabase Auth
-- **Storage**: Supabase Storage (medicine-images, family-photos, senior-photos)
-- **Edge Functions**: Deno runtime
-- **RLS**: Row Level Security policies
-
-### Fonts
-- **Headings**: Playfair Display (serif)
-- **Body**: Nunito (sans-serif)
-- **UI**: Poppins (sans-serif)
+### Backend Functions
+- `send-welcome-email`: Nodemailer via Gmail SMTP, sends guardian/senior details + PIN
+- `scheduled-notifications`: 3-hour cron for medicine reminders, inactivity checks, activity suggestions, email digests
+- `medication-reminders`: Check due medications, create notifications
+- `log-medication`: Mark taken/snooze actions
 
 ---
 
@@ -281,100 +98,35 @@ interface AuthContextType {
 
 ```
 src/
-├── assets/                 # Images and static assets
+├── assets/           # Hero images, morning photo
 ├── components/
-│   ├── ui/                 # shadcn/ui components
-│   ├── landing/            # Landing page components
-│   ├── MedicineCard.tsx
-│   ├── NavTile.tsx
-│   ├── TactileButton.tsx
-│   └── ...
-├── contexts/
-│   └── AuthContext.tsx     # Main auth context
-├── hooks/
-│   ├── use-mobile.tsx
-│   └── use-toast.ts
-├── integrations/
-│   └── supabase/
-│       ├── client.ts       # Supabase client
-│       └── types.ts        # Generated types
-├── lib/
-│   ├── translations.ts     # Hinglish translations
-│   └── utils.ts
+│   ├── ui/           # shadcn/ui components
+│   ├── landing/      # HeroCarousel
+│   ├── GlowIcon, NavTile, TactileButton, StatusPulse, HeroImage, SettingsGatekeeper
+├── contexts/AuthContext.tsx
 ├── pages/
-│   ├── auth/
-│   │   ├── GuardianAuth.tsx
-│   │   └── SeniorAuth.tsx
-│   ├── guardian/
-│   │   ├── GuardianHome.tsx
-│   │   ├── GuardianLayout.tsx
-│   │   ├── GuardianMedicines.tsx
-│   │   ├── GuardianOnboarding.tsx
-│   │   └── GuardianSettings.tsx
-│   ├── senior/
-│   │   ├── SeniorDawa.tsx
-│   │   ├── SeniorHome.tsx
-│   │   ├── SeniorMadad.tsx
-│   │   ├── SeniorParivaar.tsx
-│   │   └── SeniorSantosh.tsx
-│   ├── Landing.tsx
-│   └── NotFound.tsx
-├── App.tsx
-├── App.css
-├── main.tsx
-└── index.css               # Tailwind config + CSS variables
-
+│   ├── auth/         # GuardianAuth, SeniorAuth
+│   ├── guardian/     # Home, Layout, Medicines, Joy, Settings, Onboarding
+│   ├── senior/       # Home, Dawa, Santosh, Madad, Parivaar
+│   ├── Landing.tsx, NotFound.tsx
+├── lib/translations.ts, utils.ts
+supabase/functions/
+├── send-welcome-email/
+├── scheduled-notifications/
+├── medication-reminders/
+├── log-medication/
 docs/
-├── database-queries.sql    # All SQL queries for manual execution
-└── WORKFLOW.md             # This file
-
-supabase/
-├── config.toml
-└── migrations/             # Database migrations
+├── WORKFLOW.md, database-queries.sql, futures.md
 ```
 
 ---
 
-## 🧪 Testing Guide
+## 🚀 Future Roadmap
 
-### Test Guardian Flow
-1. Go to `/auth`
-2. Create account with email, name, phone
-3. Complete Senior KYC (name, photo optional)
-4. Set 4-digit Family PIN
-5. Verify redirect to `/guardian`
+See `docs/futures.md` for detailed feature plans, monetization strategy, and scaling architecture.
 
-### Test Senior Flow
-1. Go to `/senior/auth`
-2. Enter guardian's phone number
-3. Enter the Family PIN set during onboarding
-4. Verify access to `/app` (Senior Home)
-5. Test all 4 tiles (Dawa, Khushi, Madad, Parivaar)
-
-### Test Settings
-1. As Guardian, go to Settings
-2. Verify logout works
-3. Verify delete senior works
-4. Verify delete account works
+**Next phases:** Health vitals tracking, OCR prescriptions, voice calls (WebRTC), AI companion (Gemini), wearable integration, multi-language support.
 
 ---
 
-## 📝 Notes
-
-### Security Considerations
-- All tables have RLS enabled
-- SECURITY DEFINER functions for cross-table queries
-- PIN stored as plain text (should be hashed in production)
-- Phone numbers used as identifiers (should validate format)
-
-### Design Principles
-- **Senior-first**: Everything optimized for elderly users
-- **Hinglish UI**: Mix of Hindi and English for Indian context
-- **High contrast**: Easy readability
-- **Large touch targets**: 48px+ tap areas
-- **Minimal cognitive load**: One action per screen
-
----
-
-*Last Updated: February 2026*
-*Version: 1.0.0*
+*Last Updated: February 2026 · Version: 1.1.0*
