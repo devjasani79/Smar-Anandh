@@ -1,55 +1,62 @@
 -- ============================================
--- SmarAnandh Database Queries Reference
--- Complete SQL reference for all operations
+-- SmarAnandh — Complete Database Reference
+-- All SQL from project inception to current
+-- Last Updated: March 2026
 -- ============================================
 
+
 -- ============================================
--- SECTION 1: TABLE CREATION & SCHEMA
+-- SECTION 1: ENUMS
 -- ============================================
 
--- Note: These tables already exist. This is for reference only.
+CREATE TYPE public.app_role AS ENUM ('guardian', 'senior');
 
--- profiles table (extends auth.users)
+
+-- ============================================
+-- SECTION 2: TABLE CREATION
+-- ============================================
+
+-- profiles (extends auth.users with app-specific data)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL UNIQUE,
   full_name TEXT NOT NULL,
-  phone TEXT UNIQUE,
+  phone TEXT,
   avatar_url TEXT,
   language TEXT DEFAULT 'hinglish',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- user_roles table
+-- user_roles (role assignments — separated from profiles for security)
 CREATE TABLE IF NOT EXISTS public.user_roles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
   role app_role NOT NULL,
   UNIQUE(user_id, role)
 );
 
--- seniors table
+-- seniors (senior profiles with auth PIN)
 CREATE TABLE IF NOT EXISTS public.seniors (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   preferred_name TEXT,
   photo_url TEXT,
   language TEXT DEFAULT 'hinglish',
-  family_pin TEXT, -- 4-digit PIN for dual-key auth
+  family_pin TEXT,
   guardian_email TEXT,
   chronic_conditions TEXT[],
   nudge_frequency TEXT DEFAULT 'medium',
   emergency_contacts JSONB DEFAULT '[]',
-  user_id UUID REFERENCES auth.users(id),
+  user_id UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- guardian_senior_links table (many-to-many relationship)
+-- guardian_senior_links (many-to-many relationship)
 CREATE TABLE IF NOT EXISTS public.guardian_senior_links (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  guardian_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  guardian_id UUID NOT NULL,
   senior_id UUID NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
   relationship TEXT DEFAULT 'family',
   is_primary BOOLEAN DEFAULT false,
@@ -57,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.guardian_senior_links (
   UNIQUE(guardian_id, senior_id)
 );
 
--- medications table
+-- medications
 CREATE TABLE IF NOT EXISTS public.medications (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   senior_id UUID NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
@@ -75,19 +82,19 @@ CREATE TABLE IF NOT EXISTS public.medications (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- medication_logs table
+-- medication_logs
 CREATE TABLE IF NOT EXISTS public.medication_logs (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   medication_id UUID NOT NULL REFERENCES public.medications(id) ON DELETE CASCADE,
   senior_id UUID NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
   scheduled_time TIMESTAMPTZ NOT NULL,
   taken_at TIMESTAMPTZ,
-  status TEXT DEFAULT 'pending', -- pending, taken, missed, snoozed
+  status TEXT DEFAULT 'pending',
   snoozed_until TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- activity_logs table
+-- activity_logs
 CREATE TABLE IF NOT EXISTS public.activity_logs (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   senior_id UUID NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
@@ -97,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.activity_logs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- joy_preferences table
+-- joy_preferences
 CREATE TABLE IF NOT EXISTS public.joy_preferences (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   senior_id UUID NOT NULL UNIQUE REFERENCES public.seniors(id) ON DELETE CASCADE,
@@ -110,11 +117,11 @@ CREATE TABLE IF NOT EXISTS public.joy_preferences (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- health_vitals table
+-- health_vitals
 CREATE TABLE IF NOT EXISTS public.health_vitals (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   senior_id UUID NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
-  vital_type TEXT NOT NULL, -- blood_pressure, heart_rate, blood_sugar, weight, temperature
+  vital_type TEXT NOT NULL,
   value NUMERIC NOT NULL,
   unit TEXT NOT NULL,
   notes TEXT,
@@ -122,7 +129,7 @@ CREATE TABLE IF NOT EXISTS public.health_vitals (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- family_members table
+-- family_members
 CREATE TABLE IF NOT EXISTS public.family_members (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   senior_id UUID NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
@@ -135,23 +142,81 @@ CREATE TABLE IF NOT EXISTS public.family_members (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- notifications table
+-- notifications
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   senior_id UUID REFERENCES public.seniors(id) ON DELETE CASCADE,
-  guardian_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  guardian_id UUID,
   type TEXT NOT NULL,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
-  urgency_level INTEGER DEFAULT 4, -- 1=critical, 2=high, 3=medium, 4=low
+  urgency_level INTEGER DEFAULT 4,
   is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 
 -- ============================================
--- SECTION 2: DATABASE FUNCTIONS (RPCs)
+-- SECTION 3: DATABASE FUNCTIONS (RPCs)
 -- ============================================
+
+-- Validate dual-key auth (phone + PIN) with phone normalization
+CREATE OR REPLACE FUNCTION public.validate_family_pin_with_phone(guardian_phone TEXT, input_pin TEXT)
+RETURNS TABLE (
+  senior_id UUID,
+  senior_name TEXT,
+  preferred_name TEXT,
+  photo_url TEXT,
+  guardian_id UUID,
+  senior_language TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    s.id as senior_id,
+    s.name as senior_name,
+    s.preferred_name,
+    s.photo_url,
+    gsl.guardian_id,
+    s.language as senior_language
+  FROM public.seniors s
+  INNER JOIN public.guardian_senior_links gsl ON gsl.senior_id = s.id AND gsl.is_primary = true
+  INNER JOIN public.profiles p ON p.user_id = gsl.guardian_id
+  WHERE s.family_pin = input_pin 
+    AND regexp_replace(p.phone, '[^0-9]', '', 'g') = regexp_replace(guardian_phone, '[^0-9]', '', 'g');
+END;
+$$;
+
+-- Validate PIN only (legacy, no phone required)
+CREATE OR REPLACE FUNCTION public.validate_family_pin(input_pin TEXT)
+RETURNS TABLE (
+  senior_id UUID,
+  senior_name TEXT,
+  preferred_name TEXT,
+  photo_url TEXT,
+  guardian_id UUID
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    s.id as senior_id,
+    s.name as senior_name,
+    s.preferred_name,
+    s.photo_url,
+    gsl.guardian_id
+  FROM public.seniors s
+  LEFT JOIN public.guardian_senior_links gsl ON gsl.senior_id = s.id AND gsl.is_primary = true
+  WHERE s.family_pin = input_pin;
+END;
+$$;
 
 -- Get all seniors linked to a guardian
 CREATE OR REPLACE FUNCTION public.get_guardian_seniors(guardian_user_id UUID)
@@ -182,64 +247,6 @@ BEGIN
 END;
 $$;
 
--- Validate family PIN with phone number (Dual-Key Auth)
-CREATE OR REPLACE FUNCTION public.validate_family_pin_with_phone(guardian_phone TEXT, input_pin TEXT)
-RETURNS TABLE (
-  senior_id UUID,
-  senior_name TEXT,
-  preferred_name TEXT,
-  photo_url TEXT,
-  guardian_id UUID,
-  senior_language TEXT
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = 'public'
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    s.id as senior_id,
-    s.name as senior_name,
-    s.preferred_name,
-    s.photo_url,
-    gsl.guardian_id,
-    s.language as senior_language
-  FROM public.seniors s
-  INNER JOIN public.guardian_senior_links gsl ON gsl.senior_id = s.id AND gsl.is_primary = true
-  INNER JOIN public.profiles p ON p.user_id = gsl.guardian_id
-  WHERE s.family_pin = input_pin 
-    AND p.phone = guardian_phone;
-END;
-$$;
-
--- Validate family PIN (without phone)
-CREATE OR REPLACE FUNCTION public.validate_family_pin(input_pin TEXT)
-RETURNS TABLE (
-  senior_id UUID,
-  senior_name TEXT,
-  preferred_name TEXT,
-  photo_url TEXT,
-  guardian_id UUID
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = 'public'
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    s.id as senior_id,
-    s.name as senior_name,
-    s.preferred_name,
-    s.photo_url,
-    gsl.guardian_id
-  FROM public.seniors s
-  LEFT JOIN public.guardian_senior_links gsl ON gsl.senior_id = s.id AND gsl.is_primary = true
-  WHERE s.family_pin = input_pin;
-END;
-$$;
-
 -- Check if user has a specific role
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
 RETURNS BOOLEAN
@@ -249,14 +256,12 @@ SECURITY DEFINER
 SET search_path = 'public'
 AS $$
   SELECT EXISTS (
-    SELECT 1
-    FROM public.user_roles
-    WHERE user_id = _user_id
-      AND role = _role
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role = _role
   )
 $$;
 
--- Check if user is guardian of a senior
+-- Check if user is guardian of a specific senior
 CREATE OR REPLACE FUNCTION public.is_guardian_of(_user_id UUID, _senior_id UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -265,14 +270,12 @@ SECURITY DEFINER
 SET search_path = 'public'
 AS $$
   SELECT EXISTS (
-    SELECT 1
-    FROM public.guardian_senior_links
-    WHERE guardian_id = _user_id
-      AND senior_id = _senior_id
+    SELECT 1 FROM public.guardian_senior_links
+    WHERE guardian_id = _user_id AND senior_id = _senior_id
   )
 $$;
 
--- Get senior ID for a user
+-- Get senior ID for a user (self-lookup)
 CREATE OR REPLACE FUNCTION public.get_senior_id_for_user(_user_id UUID)
 RETURNS UUID
 LANGUAGE sql
@@ -283,12 +286,24 @@ AS $$
   SELECT id FROM public.seniors WHERE user_id = _user_id LIMIT 1
 $$;
 
+-- Auto-update updated_at timestamp
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
 
 -- ============================================
--- SECTION 3: ROW LEVEL SECURITY (RLS) POLICIES
+-- SECTION 4: ROW LEVEL SECURITY (RLS)
 -- ============================================
 
--- Enable RLS on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.seniors ENABLE ROW LEVEL SECURITY;
@@ -301,104 +316,143 @@ ALTER TABLE public.health_vitals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- profiles policies
-CREATE POLICY "Users can view their own profile" ON public.profiles
-  FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert their own profile" ON public.profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own profile" ON public.profiles
-  FOR UPDATE USING (auth.uid() = user_id);
+-- profiles
+CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own profile" ON public.profiles FOR DELETE USING (auth.uid() = user_id);
 
--- user_roles policies
-CREATE POLICY "Users can view their own roles" ON public.user_roles
-  FOR SELECT USING (auth.uid() = user_id);
+-- user_roles
+CREATE POLICY "Users can view their own roles" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own guardian role" ON public.user_roles FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own roles" ON public.user_roles FOR DELETE USING (auth.uid() = user_id);
 
--- seniors policies
-CREATE POLICY "Guardians can insert seniors" ON public.seniors
-  FOR INSERT WITH CHECK (has_role(auth.uid(), 'guardian'));
-CREATE POLICY "Guardians can view their linked seniors" ON public.seniors
-  FOR SELECT USING (is_guardian_of(auth.uid(), id));
-CREATE POLICY "Guardians can update their linked seniors" ON public.seniors
-  FOR UPDATE USING (is_guardian_of(auth.uid(), id));
-CREATE POLICY "Seniors can view their own record" ON public.seniors
-  FOR SELECT USING (user_id = auth.uid());
+-- seniors
+CREATE POLICY "Authenticated users can insert seniors" ON public.seniors FOR INSERT WITH CHECK (true);
+CREATE POLICY "Guardians can view their linked seniors" ON public.seniors FOR SELECT USING (is_guardian_of(auth.uid(), id));
+CREATE POLICY "Guardians can update their linked seniors" ON public.seniors FOR UPDATE USING (is_guardian_of(auth.uid(), id));
+CREATE POLICY "Guardians can delete their linked seniors" ON public.seniors FOR DELETE USING (is_guardian_of(auth.uid(), id));
+CREATE POLICY "Seniors can view their own record" ON public.seniors FOR SELECT USING (user_id = auth.uid());
 
--- guardian_senior_links policies
-CREATE POLICY "Guardians can create links" ON public.guardian_senior_links
-  FOR INSERT WITH CHECK (guardian_id = auth.uid() AND has_role(auth.uid(), 'guardian'));
-CREATE POLICY "Guardians can view their links" ON public.guardian_senior_links
-  FOR SELECT USING (guardian_id = auth.uid());
+-- guardian_senior_links
+CREATE POLICY "Guardians can create links" ON public.guardian_senior_links FOR INSERT WITH CHECK (guardian_id = auth.uid());
+CREATE POLICY "Guardians can view their links" ON public.guardian_senior_links FOR SELECT USING (guardian_id = auth.uid());
+CREATE POLICY "Guardians can delete guardian_senior_links" ON public.guardian_senior_links FOR DELETE USING (guardian_id = auth.uid());
 
--- medications policies
-CREATE POLICY "Guardians can manage medications" ON public.medications
-  FOR ALL USING (is_guardian_of(auth.uid(), senior_id));
-CREATE POLICY "Seniors can view their medications" ON public.medications
-  FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
+-- medications
+CREATE POLICY "Guardians can manage medications" ON public.medications FOR ALL USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Guardians can view their senior's medications" ON public.medications FOR SELECT USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Guardians can delete medications for their seniors" ON public.medications FOR DELETE USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Seniors can view their medications" ON public.medications FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
 
--- medication_logs policies
-CREATE POLICY "Guardians can view their senior's medication logs" ON public.medication_logs
-  FOR SELECT USING (is_guardian_of(auth.uid(), senior_id));
-CREATE POLICY "Seniors can manage their medication logs" ON public.medication_logs
-  FOR ALL USING (senior_id = get_senior_id_for_user(auth.uid()));
+-- medication_logs
+CREATE POLICY "Guardians can view their senior's medication logs" ON public.medication_logs FOR SELECT USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Guardians can delete medication_logs for their seniors" ON public.medication_logs FOR DELETE USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Seniors can manage their medication logs" ON public.medication_logs FOR ALL USING (senior_id = get_senior_id_for_user(auth.uid()));
 
--- activity_logs policies
-CREATE POLICY "Guardians can view their senior's logs" ON public.activity_logs
-  FOR SELECT USING (is_guardian_of(auth.uid(), senior_id));
-CREATE POLICY "Seniors can view their own logs" ON public.activity_logs
-  FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
-CREATE POLICY "Seniors can insert their own logs" ON public.activity_logs
-  FOR INSERT WITH CHECK (senior_id = get_senior_id_for_user(auth.uid()));
+-- activity_logs
+CREATE POLICY "Guardians can view their senior's logs" ON public.activity_logs FOR SELECT USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Guardians can delete activity_logs for their seniors" ON public.activity_logs FOR DELETE USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Seniors can view their own logs" ON public.activity_logs FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
+CREATE POLICY "Seniors can insert their own logs" ON public.activity_logs FOR INSERT WITH CHECK (senior_id = get_senior_id_for_user(auth.uid()));
 
--- joy_preferences policies
-CREATE POLICY "Guardians can manage their senior's preferences" ON public.joy_preferences
-  FOR ALL USING (is_guardian_of(auth.uid(), senior_id));
-CREATE POLICY "Seniors can view their preferences" ON public.joy_preferences
-  FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
+-- joy_preferences
+CREATE POLICY "Guardians can manage their senior's preferences" ON public.joy_preferences FOR ALL USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Guardians can insert joy preferences for their seniors" ON public.joy_preferences FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM seniors s WHERE s.id = joy_preferences.senior_id AND s.user_id = auth.uid()));
+CREATE POLICY "Guardians can delete joy_preferences for their seniors" ON public.joy_preferences FOR DELETE USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Seniors can view their preferences" ON public.joy_preferences FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
 
--- health_vitals policies
-CREATE POLICY "Guardians can view their senior's vitals" ON public.health_vitals
-  FOR SELECT USING (is_guardian_of(auth.uid(), senior_id));
-CREATE POLICY "Seniors can manage their vitals" ON public.health_vitals
-  FOR ALL USING (senior_id = get_senior_id_for_user(auth.uid()));
+-- health_vitals
+CREATE POLICY "Guardians can view their senior's vitals" ON public.health_vitals FOR SELECT USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Guardians can delete health_vitals for their seniors" ON public.health_vitals FOR DELETE USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Seniors can manage their vitals" ON public.health_vitals FOR ALL USING (senior_id = get_senior_id_for_user(auth.uid()));
 
--- family_members policies
-CREATE POLICY "Guardians can manage family members" ON public.family_members
-  FOR ALL USING (is_guardian_of(auth.uid(), senior_id));
-CREATE POLICY "Seniors can view their family" ON public.family_members
-  FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
+-- family_members
+CREATE POLICY "Guardians can manage family members" ON public.family_members FOR ALL USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Guardians can delete family_members for their seniors" ON public.family_members FOR DELETE USING (is_guardian_of(auth.uid(), senior_id));
+CREATE POLICY "Seniors can view their family" ON public.family_members FOR SELECT USING (senior_id = get_senior_id_for_user(auth.uid()));
 
--- notifications policies
-CREATE POLICY "Users can view their notifications" ON public.notifications
-  FOR SELECT USING (guardian_id = auth.uid() OR senior_id = get_senior_id_for_user(auth.uid()));
-CREATE POLICY "Users can create notifications" ON public.notifications
-  FOR INSERT WITH CHECK (
-    guardian_id = auth.uid() 
-    OR senior_id = get_senior_id_for_user(auth.uid())
-    OR is_guardian_of(auth.uid(), senior_id)
-  );
+-- notifications
+CREATE POLICY "Users can view their notifications" ON public.notifications FOR SELECT USING (guardian_id = auth.uid() OR senior_id = get_senior_id_for_user(auth.uid()));
+CREATE POLICY "Users can create notifications for their linked seniors" ON public.notifications FOR INSERT WITH CHECK (guardian_id = auth.uid() OR senior_id = get_senior_id_for_user(auth.uid()) OR is_guardian_of(auth.uid(), senior_id));
 
 
 -- ============================================
--- SECTION 4: COMMON QUERIES
+-- SECTION 5: TRIGGERS
 -- ============================================
 
--- ===== GUARDIAN QUERIES =====
+CREATE TRIGGER update_profiles_updated_at
+  BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
--- Get guardian profile with phone
-SELECT id, full_name, phone 
-FROM profiles 
-WHERE user_id = 'GUARDIAN_USER_ID';
+CREATE TRIGGER update_seniors_updated_at
+  BEFORE UPDATE ON seniors FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
--- Get all seniors linked to guardian
+CREATE TRIGGER update_medications_updated_at
+  BEFORE UPDATE ON medications FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+
+CREATE TRIGGER update_joy_preferences_updated_at
+  BEFORE UPDATE ON joy_preferences FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+
+
+-- ============================================
+-- SECTION 6: INDEXES
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone);
+CREATE INDEX IF NOT EXISTS idx_seniors_family_pin ON seniors(family_pin);
+CREATE INDEX IF NOT EXISTS idx_seniors_user_id ON seniors(user_id);
+CREATE INDEX IF NOT EXISTS idx_guardian_links_guardian ON guardian_senior_links(guardian_id);
+CREATE INDEX IF NOT EXISTS idx_guardian_links_senior ON guardian_senior_links(senior_id);
+CREATE INDEX IF NOT EXISTS idx_medications_senior ON medications(senior_id);
+CREATE INDEX IF NOT EXISTS idx_medications_active ON medications(senior_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_medication_logs_senior ON medication_logs(senior_id);
+CREATE INDEX IF NOT EXISTS idx_medication_logs_scheduled ON medication_logs(scheduled_time);
+CREATE INDEX IF NOT EXISTS idx_medication_logs_status ON medication_logs(senior_id, status);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_senior ON activity_logs(senior_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_logged_at ON activity_logs(logged_at);
+CREATE INDEX IF NOT EXISTS idx_health_vitals_senior ON health_vitals(senior_id);
+CREATE INDEX IF NOT EXISTS idx_health_vitals_type ON health_vitals(senior_id, vital_type);
+CREATE INDEX IF NOT EXISTS idx_family_members_senior ON family_members(senior_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_guardian ON notifications(guardian_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_senior ON notifications(senior_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(guardian_id, is_read);
+
+
+-- ============================================
+-- SECTION 7: STORAGE BUCKETS
+-- ============================================
+
+-- Created via Supabase dashboard/API:
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('senior-photos', 'senior-photos', true);
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('medicine-images', 'medicine-images', true);
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('family-photos', 'family-photos', true);
+
+
+-- ============================================
+-- SECTION 8: CRON JOBS (pg_cron + pg_net)
+-- ============================================
+
+-- Schedule notifications every 3 hours
+-- Run via: SELECT cron.schedule(...)
+-- See docs/WORKFLOW.md for Edge Function details
+
+
+-- ============================================
+-- SECTION 9: COMMON QUERIES
+-- ============================================
+
+-- Get guardian profile
+SELECT id, full_name, phone FROM profiles WHERE user_id = 'GUARDIAN_USER_ID';
+
+-- Get all linked seniors
 SELECT * FROM get_guardian_seniors('GUARDIAN_USER_ID');
 
--- Get senior details
-SELECT * FROM seniors WHERE id = 'SENIOR_ID';
+-- Validate senior login
+SELECT * FROM validate_family_pin_with_phone('+919876543210', '1234');
 
--- Get all medications for a senior
-SELECT * FROM medications 
-WHERE senior_id = 'SENIOR_ID' AND is_active = true
-ORDER BY created_at DESC;
+-- Get active medications
+SELECT * FROM medications WHERE senior_id = 'SENIOR_ID' AND is_active = true ORDER BY created_at;
 
 -- Get today's medication logs
 SELECT ml.*, m.name, m.dosage
@@ -409,183 +463,41 @@ WHERE ml.senior_id = 'SENIOR_ID'
   AND ml.scheduled_time < CURRENT_DATE + INTERVAL '1 day'
 ORDER BY ml.scheduled_time;
 
--- Get activity logs for a senior
-SELECT * FROM activity_logs 
-WHERE senior_id = 'SENIOR_ID'
-ORDER BY logged_at DESC
-LIMIT 50;
+-- Get recent activity
+SELECT * FROM activity_logs WHERE senior_id = 'SENIOR_ID' ORDER BY logged_at DESC LIMIT 50;
 
 -- Get health vitals
-SELECT * FROM health_vitals
-WHERE senior_id = 'SENIOR_ID'
-ORDER BY recorded_at DESC
-LIMIT 10;
+SELECT * FROM health_vitals WHERE senior_id = 'SENIOR_ID' ORDER BY recorded_at DESC LIMIT 10;
 
--- Get joy preferences
-SELECT * FROM joy_preferences
-WHERE senior_id = 'SENIOR_ID';
+-- Get family members
+SELECT * FROM family_members WHERE senior_id = 'SENIOR_ID' ORDER BY display_order;
 
-
--- ===== SENIOR AUTH QUERIES =====
-
--- Validate dual-key auth (phone + PIN)
-SELECT * FROM validate_family_pin_with_phone('PHONE_NUMBER', '1234');
-
--- Validate PIN only
-SELECT * FROM validate_family_pin('1234');
-
-
--- ===== INSERT QUERIES =====
-
--- Create guardian profile (after signup)
-INSERT INTO profiles (user_id, full_name, phone)
-VALUES ('USER_ID', 'Full Name', '+919876543210');
-
--- Assign guardian role
-INSERT INTO user_roles (user_id, role)
-VALUES ('USER_ID', 'guardian');
-
--- Create senior
-INSERT INTO seniors (name, preferred_name, language, family_pin, guardian_email)
-VALUES ('Senior Name', 'Dadi', 'hinglish', '1234', 'guardian@email.com')
-RETURNING *;
-
--- Link guardian to senior
-INSERT INTO guardian_senior_links (guardian_id, senior_id, is_primary, relationship)
-VALUES ('GUARDIAN_USER_ID', 'SENIOR_ID', true, 'family');
-
--- Add medication
-INSERT INTO medications (senior_id, name, dosage, frequency, times)
-VALUES ('SENIOR_ID', 'Metformin', '500mg', 'daily', '["09:00", "21:00"]');
-
--- Log medication taken
-INSERT INTO medication_logs (medication_id, senior_id, scheduled_time, taken_at, status)
-VALUES ('MEDICATION_ID', 'SENIOR_ID', NOW(), NOW(), 'taken');
-
--- Log activity
-INSERT INTO activity_logs (senior_id, activity_type, activity_data)
-VALUES ('SENIOR_ID', 'medicine_taken', '{"medicine_name": "Metformin"}');
-
--- Create joy preferences
-INSERT INTO joy_preferences (senior_id, ai_suggestions_enabled)
-VALUES ('SENIOR_ID', true);
-
-
--- ===== UPDATE QUERIES =====
-
--- Update senior profile
-UPDATE seniors SET
-  name = 'New Name',
-  language = 'hindi',
-  nudge_frequency = 'high'
-WHERE id = 'SENIOR_ID';
-
--- Update medication
-UPDATE medications SET
-  dosage = '750mg',
-  times = '["08:00", "20:00"]'
-WHERE id = 'MEDICATION_ID';
-
--- Mark medication as taken
-UPDATE medication_logs SET
-  taken_at = NOW(),
-  status = 'taken'
-WHERE id = 'LOG_ID';
-
--- Soft delete medication
-UPDATE medications SET is_active = false
-WHERE id = 'MEDICATION_ID';
-
--- Update joy preferences
-UPDATE joy_preferences SET
-  suno_config = '{"enabled": true, "type": "oldies", "playlist_url": "https://..."}',
-  ai_suggestions_enabled = false
-WHERE senior_id = 'SENIOR_ID';
+-- Get unread notifications
+SELECT * FROM notifications WHERE guardian_id = 'GUARDIAN_USER_ID' AND is_read = false ORDER BY created_at DESC;
 
 
 -- ============================================
--- SECTION 5: INDEXES FOR PERFORMANCE
+-- SECTION 10: ANALYTICS QUERIES
 -- ============================================
 
-CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone);
-CREATE INDEX IF NOT EXISTS idx_seniors_family_pin ON seniors(family_pin);
-CREATE INDEX IF NOT EXISTS idx_guardian_links_guardian ON guardian_senior_links(guardian_id);
-CREATE INDEX IF NOT EXISTS idx_guardian_links_senior ON guardian_senior_links(senior_id);
-CREATE INDEX IF NOT EXISTS idx_medications_senior ON medications(senior_id);
-CREATE INDEX IF NOT EXISTS idx_medication_logs_senior ON medication_logs(senior_id);
-CREATE INDEX IF NOT EXISTS idx_medication_logs_scheduled ON medication_logs(scheduled_time);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_senior ON activity_logs(senior_id);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_logged_at ON activity_logs(logged_at);
-CREATE INDEX IF NOT EXISTS idx_health_vitals_senior ON health_vitals(senior_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_guardian ON notifications(guardian_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_senior ON notifications(senior_id);
-
-
--- ============================================
--- SECTION 6: TRIGGERS
--- ============================================
-
--- Auto-update updated_at timestamp
-CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
-
-CREATE TRIGGER update_profiles_updated_at
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
-
-CREATE TRIGGER update_seniors_updated_at
-  BEFORE UPDATE ON seniors
-  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
-
-CREATE TRIGGER update_medications_updated_at
-  BEFORE UPDATE ON medications
-  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
-
-CREATE TRIGGER update_joy_preferences_updated_at
-  BEFORE UPDATE ON joy_preferences
-  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
-
-
--- ============================================
--- SECTION 7: USEFUL ANALYTICS QUERIES
--- ============================================
-
--- Get medication adherence rate for a senior (last 7 days)
+-- Medication adherence rate (last 7 days)
 SELECT 
   COUNT(*) FILTER (WHERE status = 'taken') as taken,
   COUNT(*) FILTER (WHERE status = 'missed') as missed,
   COUNT(*) as total,
-  ROUND(
-    COUNT(*) FILTER (WHERE status = 'taken')::NUMERIC / 
-    NULLIF(COUNT(*)::NUMERIC, 0) * 100, 
-    1
-  ) as adherence_rate
+  ROUND(COUNT(*) FILTER (WHERE status = 'taken')::NUMERIC / NULLIF(COUNT(*)::NUMERIC, 0) * 100, 1) as adherence_pct
 FROM medication_logs
-WHERE senior_id = 'SENIOR_ID'
-  AND scheduled_time >= NOW() - INTERVAL '7 days';
+WHERE senior_id = 'SENIOR_ID' AND scheduled_time >= NOW() - INTERVAL '7 days';
 
--- Get daily activity summary
-SELECT 
-  DATE(logged_at) as date,
-  activity_type,
-  COUNT(*) as count
+-- Daily activity summary (last 30 days)
+SELECT DATE(logged_at) as date, activity_type, COUNT(*) as count
 FROM activity_logs
-WHERE senior_id = 'SENIOR_ID'
-  AND logged_at >= NOW() - INTERVAL '30 days'
+WHERE senior_id = 'SENIOR_ID' AND logged_at >= NOW() - INTERVAL '30 days'
 GROUP BY DATE(logged_at), activity_type
-ORDER BY date DESC, count DESC;
+ORDER BY date DESC;
 
--- Get seniors with pending medications (for guardian dashboard)
-SELECT 
-  s.id,
-  s.name,
-  s.photo_url,
+-- Seniors with pending medications (guardian dashboard)
+SELECT s.id, s.name, s.photo_url,
   COUNT(ml.id) FILTER (WHERE ml.status = 'pending') as pending_count
 FROM seniors s
 JOIN guardian_senior_links gsl ON gsl.senior_id = s.id
@@ -594,3 +506,9 @@ LEFT JOIN medication_logs ml ON ml.senior_id = s.id
   AND ml.scheduled_time < CURRENT_DATE + INTERVAL '1 day'
 WHERE gsl.guardian_id = 'GUARDIAN_USER_ID'
 GROUP BY s.id, s.name, s.photo_url;
+
+-- Health vital trends (for charting)
+SELECT vital_type, value, unit, recorded_at
+FROM health_vitals
+WHERE senior_id = 'SENIOR_ID' AND vital_type = 'blood_pressure'
+ORDER BY recorded_at DESC LIMIT 30;
