@@ -1,32 +1,58 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Settings, LogOut } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { HeroImage } from '@/components/HeroImage';
-import { StatusPulse } from '@/components/StatusPulse';
+import { ActionCard } from '@/components/ActionCard';
 import { NavTile } from '@/components/NavTile';
-import { SettingsGatekeeper } from '@/components/SettingsGatekeeper';
+import { BottomSheet } from '@/components/BottomSheet';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import heroImage from '@/assets/hero-morning.jpg';
 
-export default function SeniorHome() {
+function SeniorHomeContent() {
   const navigate = useNavigate();
-  const { seniorSession, sessionMode, exitSeniorMode, user } = useAuth();
+  const { seniorSession, user, exitSeniorMode } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showSettingsGate, setShowSettingsGate] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
+  const [pendingMeds, setPendingMeds] = useState(0);
+  const [nextMedTime, setNextMedTime] = useState<string | null>(null);
 
-  // Redirect if not in senior mode
   useEffect(() => {
-    if (!seniorSession) {
-      navigate('/senior/auth');
-    }
+    if (!seniorSession) { navigate('/senior/auth'); }
   }, [seniorSession, navigate]);
 
-  // Update time every minute
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch pending medications for today
+  useEffect(() => {
+    if (!seniorSession) return;
+    const fetchPending = async () => {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const { data: logs } = await supabase
+        .from('medication_logs')
+        .select('status, scheduled_time')
+        .eq('senior_id', seniorSession.seniorId)
+        .eq('status', 'pending')
+        .gte('scheduled_time', today.toISOString())
+        .lt('scheduled_time', tomorrow.toISOString());
+
+      if (logs) {
+        setPendingMeds(logs.length);
+        const past = logs.filter(l => new Date(l.scheduled_time) <= new Date());
+        if (past.length > 0) {
+          setNextMedTime(new Date(past[0].scheduled_time).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }));
+        }
+      }
+    };
+    fetchPending();
+  }, [seniorSession]);
 
   if (!seniorSession) {
     return (
@@ -37,51 +63,16 @@ export default function SeniorHome() {
   }
 
   const displayName = seniorSession.preferredName || seniorSession.seniorName;
+  const hasPendingMeds = pendingMeds > 0;
 
-  // Format time in Hinglish
-  const getTimeOfDay = () => {
-    const hours = currentTime.getHours();
-    if (hours < 12) return 'Subah';
-    if (hours < 17) return 'Dopahar';
-    if (hours < 20) return 'Shaam';
-    return 'Raat';
-  };
+  const dateStr = currentTime.toLocaleDateString('hi-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const formatDate = () => {
-    const days = ['Ravivaar', 'Somvaar', 'Mangalvaar', 'Budhvaar', 'Guruvaar', 'Shukravaar', 'Shanivaar'];
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    return `Aaj ${days[currentTime.getDay()]}, ${currentTime.getDate()} ${months[currentTime.getMonth()]} hai`;
-  };
-
-  // Demo: Check if there's a pending action
-  const hasPendingAction = false;
-  const statusMessage = hasPendingAction 
-    ? 'Dawa ka samay ho gaya' 
-    : 'Sab Kuch Theek Hai';
-
-  const handleSettingsSuccess = () => {
-    setShowSettingsGate(false);
-    navigate('/guardian');
-  };
-
-  const handleExitSeniorMode = () => {
-    exitSeniorMode();
-    // If guardian is logged in, go to guardian dashboard
-    if (user) {
-      navigate('/guardian');
-    } else {
-      navigate('/');
-    }
-  };
-
-  const handleLogoutSenior = () => {
-    exitSeniorMode();
-    navigate('/');
-  };
+  const handleLogout = () => { exitSeniorMode(); navigate('/'); };
+  const handleGuardianMode = () => { exitSeniorMode(); navigate(user ? '/guardian' : '/'); };
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe-bottom">
-      {/* Header with greeting */}
+      {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -89,71 +80,61 @@ export default function SeniorHome() {
       >
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h1 
+            <h1
               className="text-3xl text-foreground mb-1"
               style={{ fontFamily: 'Playfair Display, serif' }}
             >
-              {getTimeOfDay()} ki Namaste, {displayName}!
+              Namaste, {displayName}!
             </h1>
-            <p 
-              className="text-muted-foreground text-lg"
-              style={{ fontFamily: 'Nunito, sans-serif' }}
-            >
-              {formatDate()}
+            <p className="text-lg text-muted-foreground capitalize" style={{ fontFamily: 'Nunito, sans-serif' }}>
+              {dateStr}
             </p>
           </div>
-          <div className="flex gap-2">
-            {/* Logout from senior mode */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleLogoutSenior}
-              className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center"
-              title="Logout"
-            >
-              <LogOut className="w-6 h-6 text-destructive" />
-            </motion.button>
-            {/* Exit to guardian (only if guardian is logged in) */}
-            {user && (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={handleExitSeniorMode}
-                className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center"
-                title="Exit to Guardian Dashboard"
-              >
-                <Settings className="w-6 h-6 text-muted-foreground" />
-              </motion.button>
-            )}
-          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowSheet(true)}
+            className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center"
+          >
+            <MoreHorizontal className="w-8 h-8 text-primary" />
+          </motion.button>
         </div>
       </motion.header>
 
-      {/* Hero Image Section */}
+      {/* Hero Image */}
       <motion.section
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.3 }}
         className="px-6 mb-6"
       >
-        <HeroImage
-          imageUrl={seniorSession.photoUrl || heroImage}
-          alt="Senior photo"
-        />
+        <HeroImage imageUrl={seniorSession.photoUrl || heroImage} alt="Senior photo" />
       </motion.section>
 
-      {/* Status Pulse */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="px-6 mb-8"
-      >
-        <StatusPulse
-          status={hasPendingAction ? 'action' : 'ok'}
-          message={statusMessage}
-        />
-      </motion.section>
+      {/* Action Card */}
+      <section className="px-6 mb-6">
+        {hasPendingMeds ? (
+          <ActionCard
+            variant="urgent"
+            icon="💊"
+            title="Dawa ka Samay"
+            description={nextMedTime ? `Abhi ${nextMedTime} ki dawa lene ka samay hai` : `${pendingMeds} dawa baaki hai aaj`}
+            actionLabel="Dawa Lein"
+            onAction={() => navigate('/senior/dawa')}
+            pulse
+          />
+        ) : (
+          <ActionCard
+            variant="calm"
+            icon="✅"
+            title="Sab Theek"
+            description="Aaj ki saari dawa ho gayi hai"
+            actionLabel="Khushi Mein Kuch Karein?"
+            onAction={() => navigate('/senior/santosh')}
+          />
+        )}
+      </section>
 
-      {/* Navigation Tiles */}
+      {/* Nav Tiles */}
       <section className="flex-1 px-6 pb-8">
         <div className="grid grid-cols-2 gap-4">
           <NavTile
@@ -162,37 +143,32 @@ export default function SeniorHome() {
             sublabel="Medicine"
             onClick={() => navigate('/senior/dawa')}
             delay={1}
+            size={hasPendingMeds ? 'full' : 'normal'}
+            variant={hasPendingMeds ? 'urgent' : 'default'}
+            pulse={hasPendingMeds}
           />
-          <NavTile
-            icon="😊"
-            label="KHUSHI"
-            sublabel="Joy"
-            onClick={() => navigate('/senior/santosh')}
-            delay={2}
-          />
-          <NavTile
-            icon="🆘"
-            label="MADAD"
-            sublabel="Help"
-            onClick={() => navigate('/senior/madad')}
-            delay={3}
-          />
-          <NavTile
-            icon="📞"
-            label="PARIVAAR"
-            sublabel="Family"
-            onClick={() => navigate('/senior/parivaar')}
-            delay={4}
-          />
+          <NavTile icon="😊" label="KHUSHI" sublabel="Joy" onClick={() => navigate('/senior/santosh')} delay={2} />
+          <NavTile icon="📞" label="PARIVAAR" sublabel="Family" onClick={() => navigate('/senior/parivaar')} delay={3} />
+          <NavTile icon="🆘" label="MADAD" sublabel="Help" onClick={() => navigate('/senior/madad')} delay={4} variant="danger" />
         </div>
       </section>
 
-      {/* Settings Gatekeeper Modal */}
-      <SettingsGatekeeper
-        isOpen={showSettingsGate}
-        onClose={() => setShowSettingsGate(false)}
-        onSuccess={handleSettingsSuccess}
+      {/* Bottom Sheet */}
+      <BottomSheet
+        isOpen={showSheet}
+        onClose={() => setShowSheet(false)}
+        onLogout={handleLogout}
+        onGuardianMode={handleGuardianMode}
+        showGuardianMode={!!user}
       />
     </div>
+  );
+}
+
+export default function SeniorHome() {
+  return (
+    <ErrorBoundary>
+      <SeniorHomeContent />
+    </ErrorBoundary>
   );
 }
