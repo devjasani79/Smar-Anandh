@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, Settings, X } from "lucide-react";
 
@@ -10,6 +11,16 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ isOpen, onClose, onLogout, onGuardianMode, showGuardianMode }: BottomSheetProps) {
+  // ESC key handler
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -22,6 +33,7 @@ export function BottomSheet({ isOpen, onClose, onLogout, onGuardianMode, showGua
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-foreground/50 z-40"
             onClick={onClose}
+            aria-hidden="true"
           />
           {/* Sheet */}
           <motion.div
@@ -31,18 +43,22 @@ export function BottomSheet({ isOpen, onClose, onLogout, onGuardianMode, showGua
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl p-6 pb-safe-bottom"
             style={{ boxShadow: "0 -8px 32px hsl(0 0% 0% / 0.15)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation Options"
           >
             {/* Handle */}
             <div className="flex justify-center mb-6">
               <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
             </div>
 
-            <div className="space-y-3">
+            <nav className="space-y-3" aria-label="Settings menu">
               <button
                 onClick={onLogout}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl bg-destructive/10 active:bg-destructive/20 transition-colors min-h-[64px]"
+                aria-label="Logout karein"
               >
-                <LogOut className="w-6 h-6 text-destructive" />
+                <LogOut className="w-6 h-6 text-destructive" aria-hidden="true" />
                 <span className="text-xl font-semibold text-destructive" style={{ fontFamily: 'Nunito, sans-serif' }}>
                   Logout / Baahar Jaayein
                 </span>
@@ -52,8 +68,9 @@ export function BottomSheet({ isOpen, onClose, onLogout, onGuardianMode, showGua
                 <button
                   onClick={onGuardianMode}
                   className="w-full flex items-center gap-4 p-4 rounded-2xl bg-muted active:bg-muted/80 transition-colors min-h-[64px]"
+                  aria-label="Guardian mode mein jaayein"
                 >
-                  <Settings className="w-6 h-6 text-muted-foreground" />
+                  <Settings className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
                   <span className="text-xl font-semibold text-muted-foreground" style={{ fontFamily: 'Nunito, sans-serif' }}>
                     Guardian Mode
                   </span>
@@ -63,13 +80,14 @@ export function BottomSheet({ isOpen, onClose, onLogout, onGuardianMode, showGua
               <button
                 onClick={onClose}
                 className="w-full flex items-center justify-center gap-2 p-4 rounded-2xl border border-border active:bg-muted transition-colors min-h-[64px]"
+                aria-label="Menu band karein"
               >
-                <X className="w-5 h-5 text-muted-foreground" />
+                <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                 <span className="text-lg text-muted-foreground" style={{ fontFamily: 'Nunito, sans-serif' }}>
                   Band Karein
                 </span>
               </button>
-            </div>
+            </nav>
           </motion.div>
         </>
       )}

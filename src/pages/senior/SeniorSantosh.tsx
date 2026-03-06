@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { TactileButton } from '@/components/TactileButton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { getTimeBasedActivities, getRandomActivity, type SeniorActivity } from '@/constants/seniorActivities';
 
 interface YouTubeVideo {
   id: string;
@@ -66,10 +68,12 @@ function SeniorSantoshContent() {
   const [playingVideo, setPlayingVideo] = useState<YouTubeVideo | null>(null);
   const [mood, setMood] = useState<string | null>(null);
   const [familyPhotos, setFamilyPhotos] = useState<FamilyPhoto[]>([]);
+  const [suggestedActivity, setSuggestedActivity] = useState<SeniorActivity | null>(null);
+  const [showActivityDetail, setShowActivityDetail] = useState(false);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     if (!seniorSession) { navigate('/senior/auth'); return; }
-    // Fetch family photos
     supabase
       .from('family_members')
       .select('id, name, relationship, photo_url')
@@ -78,6 +82,8 @@ function SeniorSantoshContent() {
       .then(({ data }) => {
         if (data) setFamilyPhotos(data.filter(m => m.photo_url) as FamilyPhoto[]);
       });
+    // Set initial activity suggestion
+    setSuggestedActivity(getRandomActivity());
   }, [seniorSession]);
 
   if (!seniorSession) return null;
@@ -85,6 +91,7 @@ function SeniorSantoshContent() {
   const displayName = seniorSession.preferredName || seniorSession.seniorName;
   const slot = getTimeSlot();
   const content = contentMap[slot];
+  const timeActivities = getTimeBasedActivities();
 
   const handleMoodSelect = (selectedMood: string) => {
     setMood(selectedMood);
@@ -93,6 +100,18 @@ function SeniorSantoshContent() {
         senior_id: seniorSession.seniorId,
         activity_type: 'mood_check',
         activity_data: { mood: selectedMood },
+      });
+    }
+  };
+
+  const handleStartActivity = (activity: SeniorActivity) => {
+    setSuggestedActivity(activity);
+    setShowActivityDetail(true);
+    if (seniorSession) {
+      supabase.from('activity_logs').insert({
+        senior_id: seniorSession.seniorId,
+        activity_type: 'activity_started',
+        activity_data: { activity_id: activity.id, activity_name: activity.name },
       });
     }
   };
@@ -107,9 +126,11 @@ function SeniorSantoshContent() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-foreground/95 flex flex-col"
+            role="dialog"
+            aria-label={`Playing ${playingVideo.title}`}
           >
             <div className="absolute top-4 right-4 z-10">
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setPlayingVideo(null)} className="w-14 h-14 rounded-full bg-card/20 backdrop-blur-sm flex items-center justify-center">
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setPlayingVideo(null)} className="w-14 h-14 rounded-full bg-card/20 backdrop-blur-sm flex items-center justify-center" aria-label="Video band karein">
                 <X className="w-8 h-8 text-background" />
               </motion.button>
             </div>
@@ -130,9 +151,54 @@ function SeniorSantoshContent() {
         )}
       </AnimatePresence>
 
+      {/* Activity Detail Modal */}
+      <AnimatePresence>
+        {showActivityDetail && suggestedActivity && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          >
+            <div className="absolute inset-0 bg-foreground/50" onClick={() => setShowActivityDetail(false)} />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-card rounded-3xl p-8 max-w-sm w-full text-center z-10"
+              style={{ boxShadow: "0 16px 48px hsl(0 0% 0% / 0.2)" }}
+              role="dialog"
+              aria-label={suggestedActivity.name}
+            >
+              <span className="text-6xl block mb-4" aria-hidden="true">{suggestedActivity.icon}</span>
+              <h2 className="text-2xl font-bold text-foreground mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>
+                {suggestedActivity.name}
+              </h2>
+              <p className="text-lg text-muted-foreground mb-4">{suggestedActivity.description}</p>
+              <p className="text-sm text-primary mb-4">⏱️ {suggestedActivity.duration} minute</p>
+
+              {suggestedActivity.instructions && (
+                <div className="text-left mb-6 space-y-2">
+                  {suggestedActivity.instructions.map((step, i) => (
+                    <div key={i} className="flex items-start gap-3 p-2">
+                      <span className="text-primary font-bold">{i + 1}.</span>
+                      <p className="text-muted-foreground">{step}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <TactileButton variant="success" size="large" onClick={() => setShowActivityDetail(false)} className="w-full">
+                ✅ Samajh Gaye!
+              </TactileButton>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="px-6 py-8 bg-gradient-to-b from-success/10 to-transparent">
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/app')} className="flex items-center gap-2 text-muted-foreground mb-4">
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/app')} className="flex items-center gap-2 text-muted-foreground mb-4" aria-label="Wapas jaayein">
           <ArrowLeft className="w-5 h-5" />
           <span style={{ fontFamily: 'Nunito, sans-serif' }}>Wapas</span>
         </motion.button>
@@ -141,10 +207,35 @@ function SeniorSantoshContent() {
       </header>
 
       <main className="px-6 space-y-8">
+        {/* Suggested Activity */}
+        <section>
+          <h2 className="text-xl font-bold text-foreground mb-4" style={{ fontFamily: 'Nunito, sans-serif' }}>
+            🎯 Aaj Ye Karein
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            {timeActivities.slice(0, 4).map((activity, i) => (
+              <motion.button
+                key={activity.id}
+                initial={reduced ? {} : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleStartActivity(activity)}
+                className="p-4 bg-card rounded-2xl border border-border text-center min-h-[100px] flex flex-col items-center justify-center gap-2"
+                style={{ boxShadow: "0 2px 12px -4px hsl(30 50% 20% / 0.1)" }}
+              >
+                <span className="text-3xl" aria-hidden="true">{activity.icon}</span>
+                <p className="text-sm font-semibold text-foreground">{activity.name}</p>
+                <p className="text-xs text-muted-foreground">{activity.duration} min</p>
+              </motion.button>
+            ))}
+          </div>
+        </section>
+
         {/* Time-based content */}
         <section>
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl">{content.icon}</span>
+            <span className="text-3xl" aria-hidden="true">{content.icon}</span>
             <div>
               <h2 className="text-xl font-bold text-foreground" style={{ fontFamily: 'Nunito, sans-serif' }}>{content.title}</h2>
               <p className="text-muted-foreground">{content.subtitle}</p>
@@ -154,20 +245,21 @@ function SeniorSantoshContent() {
             {content.videos.map((item, i) => (
               <motion.button
                 key={item.id}
-                initial={{ opacity: 0, x: -16 }}
+                initial={reduced ? {} : { opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setPlayingVideo(item)}
                 className="w-full p-5 bg-card rounded-2xl border border-border flex items-center gap-4 text-left"
                 style={{ boxShadow: "0 2px 12px -4px hsl(30 50% 20% / 0.1)" }}
+                aria-label={`${item.title} chalayein, ${item.duration}`}
               >
-                <span className="text-4xl">{item.emoji}</span>
+                <span className="text-4xl" aria-hidden="true">{item.emoji}</span>
                 <div className="flex-1">
                   <p className="text-lg font-semibold text-foreground">{item.title}</p>
                   <p className="text-muted-foreground">{item.duration}</p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center" aria-hidden="true">
                   <Play className="w-6 h-6 text-primary-foreground" />
                 </div>
               </motion.button>
@@ -181,11 +273,11 @@ function SeniorSantoshContent() {
             <h2 className="text-xl font-bold text-foreground mb-4" style={{ fontFamily: 'Nunito, sans-serif' }}>
               📸 Parivaar ki Yaadein
             </h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory">
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory" role="list">
               {familyPhotos.map(photo => (
-                <div key={photo.id} className="snap-center shrink-0">
+                <div key={photo.id} className="snap-center shrink-0" role="listitem">
                   <div className="w-48 h-48 rounded-xl overflow-hidden border-2 border-border">
-                    <img src={photo.photo_url} alt={photo.name} className="w-full h-full object-cover" />
+                    <img src={photo.photo_url} alt={`${photo.name} ki photo`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   </div>
                   <p className="text-center text-sm text-muted-foreground mt-2">{photo.name} - {photo.relationship}</p>
                 </div>
@@ -196,15 +288,16 @@ function SeniorSantoshContent() {
 
         {/* Mood check */}
         <motion.section
-          initial={{ opacity: 0, y: 20 }}
+          initial={reduced ? {} : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="p-6 bg-card rounded-2xl border border-border"
+          aria-label="Mood check"
         >
           <h3 className="text-lg font-semibold text-foreground mb-4" style={{ fontFamily: 'Nunito, sans-serif' }}>
             Aaj kaisa lag raha hai?
           </h3>
-          <div className="flex justify-around">
+          <div className="flex justify-around" role="radiogroup" aria-label="Mood select karein">
             {[
               { emoji: '😊', label: 'Khush' },
               { emoji: '😐', label: 'Theek' },
@@ -214,7 +307,10 @@ function SeniorSantoshContent() {
                 key={item.emoji}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleMoodSelect(item.emoji)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors ${mood === item.emoji ? 'bg-primary/20' : ''}`}
+                role="radio"
+                aria-checked={mood === item.emoji}
+                aria-label={item.label}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors ${mood === item.emoji ? 'bg-primary/20 ring-2 ring-primary' : ''}`}
               >
                 <span className="text-5xl">{item.emoji}</span>
                 <span className="text-sm text-muted-foreground">{item.label}</span>
@@ -222,7 +318,7 @@ function SeniorSantoshContent() {
             ))}
           </div>
           {mood && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-primary mt-4 text-sm" style={{ fontFamily: 'Nunito, sans-serif' }}>
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-primary mt-4 text-sm" style={{ fontFamily: 'Nunito, sans-serif' }} role="status">
               ✓ Aapka mood record ho gaya!
             </motion.p>
           )}

@@ -8,6 +8,7 @@ import { FamilyCard } from '@/components/FamilyCard';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TactileButton } from '@/components/TactileButton';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { toast } from 'sonner';
 
 interface FamilyMember {
@@ -24,6 +25,7 @@ function SeniorParivaarContent() {
   const { seniorSession } = useAuth();
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     if (!seniorSession) { navigate('/senior/auth'); return; }
@@ -41,10 +43,18 @@ function SeniorParivaarContent() {
   if (!seniorSession) return null;
   const displayName = seniorSession.preferredName || seniorSession.seniorName;
 
+  const logInteraction = (memberId: string, type: string) => {
+    supabase.from('activity_logs').insert({
+      senior_id: seniorSession.seniorId,
+      activity_type: `family_${type}`,
+      activity_data: { family_member_id: memberId, interaction_type: type },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background pb-8">
       <header className="px-6 py-8 bg-gradient-to-b from-primary/10 to-transparent">
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/app')} className="flex items-center gap-2 text-muted-foreground mb-4">
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/app')} className="flex items-center gap-2 text-muted-foreground mb-4" aria-label="Wapas jaayein">
           <ArrowLeft className="w-5 h-5" />
           <span style={{ fontFamily: 'Nunito, sans-serif' }}>Wapas</span>
         </motion.button>
@@ -52,9 +62,9 @@ function SeniorParivaarContent() {
         <p className="text-muted-foreground mt-1" style={{ fontFamily: 'Nunito, sans-serif' }}>{displayName}, kisko contact karna hai?</p>
       </header>
 
-      <main className="px-6">
+      <main className="px-6" role="main">
         {loading ? (
-          <div className="space-y-4">
+          <div className="space-y-4" aria-busy="true" aria-label="Loading contacts">
             {[1, 2].map(i => (
               <div key={i} className="rounded-2xl overflow-hidden">
                 <Skeleton className="h-40 w-full" />
@@ -62,23 +72,29 @@ function SeniorParivaarContent() {
             ))}
           </div>
         ) : familyMembers.length === 0 ? (
-          <div className="text-center py-12">
-            <span className="text-6xl block mb-4">👨‍👩‍👧‍👦</span>
+          <div className="text-center py-12" role="status">
+            <span className="text-6xl block mb-4" aria-hidden="true">👨‍👩‍👧‍👦</span>
             <p className="text-xl text-muted-foreground" style={{ fontFamily: 'Nunito, sans-serif' }}>Abhi koi contact nahi hai</p>
             <p className="text-muted-foreground mt-2">Guardian ko batayein family members add karne ke liye</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4" role="list" aria-label="Family members">
             {familyMembers.map(member => (
               <FamilyCard
                 key={member.id}
                 member={member}
                 onCall={() => {
                   toast.info(`${member.name} ko call kar rahe hain...`);
-                  // window.location.href = `tel:${member.phone}`;
+                  logInteraction(member.id, 'call');
                 }}
-                onVideoCall={() => toast.info(`${member.name} se video call connect kar rahe hain...`)}
-                onMessage={() => toast.success(`${member.name} ko "Miss you" bhej diya!`)}
+                onVideoCall={() => {
+                  toast.info(`${member.name} se video call...`);
+                  logInteraction(member.id, 'video_call');
+                }}
+                onMessage={() => {
+                  toast.success(`${member.name} ko message bheja!`);
+                  logInteraction(member.id, 'message');
+                }}
               />
             ))}
           </div>
@@ -86,7 +102,7 @@ function SeniorParivaarContent() {
 
         {/* Quick Love Messages */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={reduced ? {} : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="mt-8 p-6 bg-gradient-to-br from-destructive/5 to-destructive/10 rounded-2xl border border-border"
@@ -104,10 +120,17 @@ function SeniorParivaarContent() {
               <TactileButton
                 key={msg.text}
                 variant="neutral"
-                onClick={() => toast.success(`Sabko "${msg.text} ${msg.emoji}" bhej diya!`)}
+                onClick={() => {
+                  // Send to all family via WhatsApp
+                  if (familyMembers.length > 0) {
+                    const cleanPhone = familyMembers[0].phone.replace(/[^0-9+]/g, '').replace('+', '');
+                    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`${msg.text} ${msg.emoji}`)}`, '_blank');
+                  }
+                  toast.success(`Sabko "${msg.text} ${msg.emoji}" bhej diya!`);
+                }}
                 className="justify-center"
               >
-                <span className="text-2xl mr-2">{msg.emoji}</span>
+                <span className="text-2xl mr-2" aria-hidden="true">{msg.emoji}</span>
                 <span className="text-sm">{msg.text}</span>
               </TactileButton>
             ))}
