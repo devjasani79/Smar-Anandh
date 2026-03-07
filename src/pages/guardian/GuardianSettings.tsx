@@ -13,9 +13,11 @@ import {
   Bell,
   LogOut,
   Shield,
-  UserX
+  UserX,
+  Download
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useExportData } from '@/hooks/useExportData';
 import { useAuth } from '@/contexts/AuthContext';
 import { TactileButton } from '@/components/TactileButton';
 import { Input } from '@/components/ui/input';
