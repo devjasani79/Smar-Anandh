@@ -40,6 +40,20 @@ interface SeniorDetails {
   family_pin: string | null;
 }
 
+function ExportButtonInline({ seniorId, seniorName }: { seniorId: string; seniorName: string }) {
+  const { exportSeniorData, exporting } = useExportData();
+  return (
+    <TactileButton
+      variant="neutral"
+      onClick={() => exportSeniorData(seniorId, seniorName)}
+      disabled={exporting}
+    >
+      {exporting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
+      {exporting ? 'Exporting...' : 'Export All Data'}
+    </TactileButton>
+  );
+}
+
 export default function GuardianSettings() {
   const navigate = useNavigate();
   const { user, signOut, refreshLinkedSeniors, guardianProfile } = useAuth();
