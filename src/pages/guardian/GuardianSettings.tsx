@@ -265,10 +265,10 @@ export default function GuardianSettings() {
     
     setDeleting(true);
     
-    // Soft delete: mark as deleted instead of hard delete
+    // Soft delete: mark as deleted
     const { error } = await supabase
       .from('seniors')
-      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id } as any)
       .eq('id', selectedSenior);
     
     if (error) {
@@ -277,7 +277,7 @@ export default function GuardianSettings() {
       // Revoke guardian link
       await supabase
         .from('guardian_senior_links')
-        .update({ revoked_at: new Date().toISOString(), revoked_by: user.id, revocation_reason: 'Senior profile deleted' })
+        .update({ revoked_at: new Date().toISOString(), revoked_by: user.id, revocation_reason: 'Senior profile deleted' } as any)
         .eq('senior_id', selectedSenior);
       
       toast.success('Senior profile deleted');
