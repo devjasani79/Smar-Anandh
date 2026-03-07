@@ -708,7 +708,7 @@ export default function GuardianSettings() {
           <p className="text-muted-foreground text-sm mb-4">
             Download all data for this senior as a JSON file (GDPR compliant).
           </p>
-          <ExportButton seniorId={senior.id} seniorName={senior.name} />
+          <ExportButtonInline seniorId={senior.id} seniorName={senior.name} />
         </motion.div>
       )}
 
