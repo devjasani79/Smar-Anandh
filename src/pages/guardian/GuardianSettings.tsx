@@ -261,23 +261,25 @@ export default function GuardianSettings() {
   };
 
   const handleDeleteSenior = async () => {
-    if (!selectedSenior) return;
+    if (!selectedSenior || !user) return;
     
     setDeleting(true);
     
-    // Delete in order: links, preferences, medications, logs, then senior
-    await supabase.from('guardian_senior_links').delete().eq('senior_id', selectedSenior);
-    await supabase.from('joy_preferences').delete().eq('senior_id', selectedSenior);
-    await supabase.from('medication_logs').delete().eq('senior_id', selectedSenior);
-    await supabase.from('medications').delete().eq('senior_id', selectedSenior);
-    await supabase.from('activity_logs').delete().eq('senior_id', selectedSenior);
-    await supabase.from('health_vitals').delete().eq('senior_id', selectedSenior);
-    
-    const { error } = await supabase.from('seniors').delete().eq('id', selectedSenior);
+    // Soft delete: mark as deleted instead of hard delete
+    const { error } = await supabase
+      .from('seniors')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+      .eq('id', selectedSenior);
     
     if (error) {
       toast.error('Failed to delete senior profile');
     } else {
+      // Revoke guardian link
+      await supabase
+        .from('guardian_senior_links')
+        .update({ revoked_at: new Date().toISOString(), revoked_by: user.id, revocation_reason: 'Senior profile deleted' })
+        .eq('senior_id', selectedSenior);
+      
       toast.success('Senior profile deleted');
       await refreshLinkedSeniors();
     }
