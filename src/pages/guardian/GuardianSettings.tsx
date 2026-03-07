@@ -694,6 +694,24 @@ export default function GuardianSettings() {
         </motion.div>
       )}
 
+      {/* Data Export (GDPR) */}
+      {senior && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-warm p-6"
+        >
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Download className="w-5 h-5 text-primary" />
+            Data Export
+          </h2>
+          <p className="text-muted-foreground text-sm mb-4">
+            Download all data for this senior as a JSON file (GDPR compliant).
+          </p>
+          <ExportButton seniorId={senior.id} seniorName={senior.name} />
+        </motion.div>
+      )}
+
       {/* Danger Zone */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
