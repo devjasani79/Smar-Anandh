@@ -16,8 +16,7 @@ export function useAuditLogs(tableName?: string, recordId?: string) {
   return useQuery({
     queryKey: ['auditLogs', tableName, recordId],
     queryFn: async () => {
-      let query = supabase
-        .from('audit_logs')
+      let query = (supabase.from as any)('audit_logs')
         .select('*')
         .order('changed_at', { ascending: false })
         .limit(50);

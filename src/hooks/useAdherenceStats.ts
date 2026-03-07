@@ -14,8 +14,6 @@ export function useAdherenceStats(seniorId: string) {
   return useQuery({
     queryKey: ['adherenceStats', seniorId],
     queryFn: async () => {
-      // Query the materialized view via RPC or direct table query
-      // Since materialized views aren't in the types, use rpc to refresh then query
       const { data, error } = await supabase
         .from('medication_adherence_stats' as any)
         .select('*')
@@ -24,15 +22,15 @@ export function useAdherenceStats(seniorId: string) {
         .limit(30);
 
       if (error) throw error;
-      return (data || []) as AdherenceStat[];
+      return (data || []) as unknown as AdherenceStat[];
     },
     enabled: !!seniorId,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
 }
 
 export function useRefreshAdherence() {
   return async () => {
-    await supabase.rpc('refresh_adherence_stats' as any);
+    await (supabase.rpc as any)('refresh_adherence_stats');
   };
 }
