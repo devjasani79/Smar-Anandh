@@ -13,9 +13,11 @@ import {
   Bell,
   LogOut,
   Shield,
-  UserX
+  UserX,
+  Download
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useExportData } from '@/hooks/useExportData';
 import { useAuth } from '@/contexts/AuthContext';
 import { TactileButton } from '@/components/TactileButton';
 import { Input } from '@/components/ui/input';
@@ -36,6 +38,20 @@ interface SeniorDetails {
   nudge_frequency: string;
   emergency_contacts: { name: string; phone: string; relationship: string }[];
   family_pin: string | null;
+}
+
+function ExportButtonInline({ seniorId, seniorName }: { seniorId: string; seniorName: string }) {
+  const { exportSeniorData, exporting } = useExportData();
+  return (
+    <TactileButton
+      variant="neutral"
+      onClick={() => exportSeniorData(seniorId, seniorName)}
+      disabled={exporting}
+    >
+      {exporting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
+      {exporting ? 'Exporting...' : 'Export All Data'}
+    </TactileButton>
+  );
 }
 
 export default function GuardianSettings() {
@@ -259,23 +275,25 @@ export default function GuardianSettings() {
   };
 
   const handleDeleteSenior = async () => {
-    if (!selectedSenior) return;
+    if (!selectedSenior || !user) return;
     
     setDeleting(true);
     
-    // Delete in order: links, preferences, medications, logs, then senior
-    await supabase.from('guardian_senior_links').delete().eq('senior_id', selectedSenior);
-    await supabase.from('joy_preferences').delete().eq('senior_id', selectedSenior);
-    await supabase.from('medication_logs').delete().eq('senior_id', selectedSenior);
-    await supabase.from('medications').delete().eq('senior_id', selectedSenior);
-    await supabase.from('activity_logs').delete().eq('senior_id', selectedSenior);
-    await supabase.from('health_vitals').delete().eq('senior_id', selectedSenior);
-    
-    const { error } = await supabase.from('seniors').delete().eq('id', selectedSenior);
+    // Soft delete: mark as deleted
+    const { error } = await supabase
+      .from('seniors')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id } as any)
+      .eq('id', selectedSenior);
     
     if (error) {
       toast.error('Failed to delete senior profile');
     } else {
+      // Revoke guardian link
+      await supabase
+        .from('guardian_senior_links')
+        .update({ revoked_at: new Date().toISOString(), revoked_by: user.id, revocation_reason: 'Senior profile deleted' } as any)
+        .eq('senior_id', selectedSenior);
+      
       toast.success('Senior profile deleted');
       await refreshLinkedSeniors();
     }
@@ -687,6 +705,24 @@ export default function GuardianSettings() {
               ))
             )}
           </div>
+        </motion.div>
+      )}
+
+      {/* Data Export (GDPR) */}
+      {senior && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-warm p-6"
+        >
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Download className="w-5 h-5 text-primary" />
+            Data Export
+          </h2>
+          <p className="text-muted-foreground text-sm mb-4">
+            Download all data for this senior as a JSON file (GDPR compliant).
+          </p>
+          <ExportButtonInline seniorId={senior.id} seniorName={senior.name} />
         </motion.div>
       )}
 
