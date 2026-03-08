@@ -47,8 +47,13 @@ function SeniorHomeContent() {
   const displayName = seniorSession.preferredName || seniorSession.seniorName;
   const hasPendingMeds = (pendingData?.overdueCount || 0) > 0;
   const dateStr = currentTime.toLocaleDateString('hi-IN', { weekday: 'long', day: 'numeric', month: 'long' });
-  const handleLogout = () => { exitSeniorMode(); navigate('/'); };
-  const handleGuardianMode = () => { exitSeniorMode(); navigate(user ? '/guardian' : '/'); };
+  const requestLogout = () => { setExitAction('logout'); setShowSheet(false); setShowExitPin(true); };
+  const requestGuardianMode = () => { setExitAction('guardian'); setShowSheet(false); setShowExitPin(true); };
+  const handleExitSuccess = () => {
+    setShowExitPin(false);
+    exitSeniorMode();
+    navigate(exitAction === 'guardian' && user ? '/guardian' : '/');
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe-bottom">
