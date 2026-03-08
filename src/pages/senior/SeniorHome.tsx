@@ -8,6 +8,7 @@ import { ActionCard } from '@/components/ActionCard';
 import { NavTile } from '@/components/NavTile';
 import { BottomSheet } from '@/components/BottomSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ExitPinModal } from '@/components/senior/ExitPinModal';
 import { usePendingMeds } from '@/hooks/useMedications';
 import { useMedicationRealtime } from '@/hooks/useMedicationRealtime';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
