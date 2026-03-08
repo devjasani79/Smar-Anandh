@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { GlowIcon } from '@/components/GlowIcon';
 import { format } from 'date-fns';
 import { TactileButton } from '@/components/TactileButton';
+import { AdherenceChart } from '@/components/guardian/AdherenceChart';
 
 interface ContextType {
   selectedSenior: string | null;
