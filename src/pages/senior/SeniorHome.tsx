@@ -19,6 +19,8 @@ function SeniorHomeContent() {
   const { seniorSession, user, exitSeniorMode } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSheet, setShowSheet] = useState(false);
+  const [showExitPin, setShowExitPin] = useState(false);
+  const [exitAction, setExitAction] = useState<'logout' | 'guardian' | null>(null);
   const reduced = useReducedMotion();
 
   const seniorId = seniorSession?.seniorId || '';
