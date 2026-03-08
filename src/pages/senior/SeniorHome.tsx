@@ -8,6 +8,7 @@ import { ActionCard } from '@/components/ActionCard';
 import { NavTile } from '@/components/NavTile';
 import { BottomSheet } from '@/components/BottomSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ExitPinModal } from '@/components/senior/ExitPinModal';
 import { usePendingMeds } from '@/hooks/useMedications';
 import { useMedicationRealtime } from '@/hooks/useMedicationRealtime';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
@@ -18,6 +19,8 @@ function SeniorHomeContent() {
   const { seniorSession, user, exitSeniorMode } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showSheet, setShowSheet] = useState(false);
+  const [showExitPin, setShowExitPin] = useState(false);
+  const [exitAction, setExitAction] = useState<'logout' | 'guardian' | null>(null);
   const reduced = useReducedMotion();
 
   const seniorId = seniorSession?.seniorId || '';
@@ -44,8 +47,13 @@ function SeniorHomeContent() {
   const displayName = seniorSession.preferredName || seniorSession.seniorName;
   const hasPendingMeds = (pendingData?.overdueCount || 0) > 0;
   const dateStr = currentTime.toLocaleDateString('hi-IN', { weekday: 'long', day: 'numeric', month: 'long' });
-  const handleLogout = () => { exitSeniorMode(); navigate('/'); };
-  const handleGuardianMode = () => { exitSeniorMode(); navigate(user ? '/guardian' : '/'); };
+  const requestLogout = () => { setExitAction('logout'); setShowSheet(false); setShowExitPin(true); };
+  const requestGuardianMode = () => { setExitAction('guardian'); setShowSheet(false); setShowExitPin(true); };
+  const handleExitSuccess = () => {
+    setShowExitPin(false);
+    exitSeniorMode();
+    navigate(exitAction === 'guardian' && user ? '/guardian' : '/');
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe-bottom">
@@ -138,9 +146,16 @@ function SeniorHomeContent() {
       <BottomSheet
         isOpen={showSheet}
         onClose={() => setShowSheet(false)}
-        onLogout={handleLogout}
-        onGuardianMode={handleGuardianMode}
+        onLogout={requestLogout}
+        onGuardianMode={requestGuardianMode}
         showGuardianMode={!!user}
+      />
+
+      <ExitPinModal
+        isOpen={showExitPin}
+        onClose={() => setShowExitPin(false)}
+        onSuccess={handleExitSuccess}
+        seniorId={seniorId}
       />
     </div>
   );

@@ -23,6 +23,7 @@ import { TactileButton } from '@/components/TactileButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { AuditLogViewer } from '@/components/guardian/AuditLogViewer';
 
 interface ContextType {
   selectedSenior: string | null;
@@ -725,6 +726,9 @@ export default function GuardianSettings() {
           <ExportButtonInline seniorId={senior.id} seniorName={senior.name} />
         </motion.div>
       )}
+
+      {/* Audit Log */}
+      <AuditLogViewer />
 
       {/* Danger Zone */}
       <motion.div
