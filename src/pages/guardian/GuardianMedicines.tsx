@@ -88,23 +88,47 @@ export default function GuardianMedicines() {
     setOcrProcessing(true);
     setShowOcrModal(true);
 
-    // Simulate OCR processing (in production, call Google Vision API)
-    // For demo, we'll simulate with a timeout
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', file);
 
-    // Simulated OCR result
-    const mockResult = {
-      name: 'Metformin',
-      dosage: '500mg - 1 tablet twice daily'
-    };
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
 
-    setOcrResult(mockResult);
-    setFormData(prev => ({
-      ...prev,
-      name: mockResult.name,
-      dosage: mockResult.dosage,
-      prescriptionImageFile: file,
-    }));
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scan-prescription`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formDataUpload,
+        }
+      );
+
+      const result = await response.json();
+      const meds = result.medications || [];
+
+      if (meds.length > 0) {
+        setOcrResult({ name: meds[0].name, dosage: meds[0].dosage });
+        setFormData(prev => ({
+          ...prev,
+          name: meds[0].name,
+          dosage: meds[0].dosage,
+          prescriptionImageFile: file,
+        }));
+      } else {
+        toast.error('Could not read prescription. Please enter details manually.');
+        setOcrResult(null);
+        setFormData(prev => ({ ...prev, prescriptionImageFile: file }));
+      }
+    } catch (err) {
+      console.error('OCR error:', err);
+      toast.error('Prescription scanning failed. Please enter details manually.');
+      setOcrResult(null);
+      setFormData(prev => ({ ...prev, prescriptionImageFile: file }));
+    }
+
     setOcrProcessing(false);
   };
 

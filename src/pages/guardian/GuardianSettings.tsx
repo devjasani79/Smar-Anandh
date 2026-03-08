@@ -727,6 +727,9 @@ export default function GuardianSettings() {
         </motion.div>
       )}
 
+      {/* Audit Log */}
+      <AuditLogViewer />
+
       {/* Danger Zone */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

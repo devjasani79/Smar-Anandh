@@ -146,9 +146,16 @@ function SeniorHomeContent() {
       <BottomSheet
         isOpen={showSheet}
         onClose={() => setShowSheet(false)}
-        onLogout={handleLogout}
-        onGuardianMode={handleGuardianMode}
+        onLogout={requestLogout}
+        onGuardianMode={requestGuardianMode}
         showGuardianMode={!!user}
+      />
+
+      <ExitPinModal
+        isOpen={showExitPin}
+        onClose={() => setShowExitPin(false)}
+        onSuccess={handleExitSuccess}
+        seniorId={seniorId}
       />
     </div>
   );

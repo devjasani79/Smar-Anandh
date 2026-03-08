@@ -402,6 +402,11 @@ export default function GuardianHome() {
         </motion.div>
       </div>
 
+      {/* Adherence Chart */}
+      {selectedSenior && (
+        <AdherenceChart seniorId={selectedSenior} />
+      )}
+
       {/* Today's Medications */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
