@@ -160,6 +160,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const sendWelcomeEmail = useCallback(async (email: string, fullName?: string, phone?: string) => {
+    try {
+      await supabase.functions.invoke('send-welcome-email', {
+        body: {
+          guardian_email: email,
+          guardian_name: fullName || email.split('@')[0],
+          guardian_phone: phone || null,
+        },
+      });
+    } catch (err) {
+      console.error('Welcome email failed (non-blocking):', err);
+    }
+  }, []);
+
   const ensureProfileAndRole = useCallback(async (userId: string, userEmail: string, userMeta?: Record<string, any>) => {
     // Check if profile exists
     const { data: existingProfile } = await supabase
@@ -168,13 +182,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (!existingProfile) {
+    const isNewUser = !existingProfile;
+
+    if (isNewUser) {
       const fullName = userMeta?.full_name || userMeta?.name || userEmail.split('@')[0];
       await supabase.from('profiles').insert({
         user_id: userId,
         full_name: fullName,
         phone: userMeta?.phone || null,
       });
+
+      // Send welcome email for new OAuth users
+      sendWelcomeEmail(userEmail, fullName, userMeta?.phone);
     }
 
     // Check if role exists
@@ -190,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: 'guardian' as AppRole,
       });
     }
-  }, []);
+  }, [sendWelcomeEmail]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -264,6 +283,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user_id: data.user.id,
         role: 'guardian' as AppRole
       });
+
+      // Send welcome email
+      sendWelcomeEmail(email, fullName, phone);
     }
 
     return { error: null };
