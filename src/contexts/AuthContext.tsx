@@ -160,18 +160,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  const ensureProfileAndRole = useCallback(async (userId: string, userEmail: string, userMeta?: Record<string, any>) => {
+    // Check if profile exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      const fullName = userMeta?.full_name || userMeta?.name || userEmail.split('@')[0];
+      await supabase.from('profiles').insert({
+        user_id: userId,
+        full_name: fullName,
+        phone: userMeta?.phone || null,
+      });
+    }
+
+    // Check if role exists
+    const { data: existingRole } = await supabase
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existingRole) {
+      await supabase.from('user_roles').insert({
+        user_id: userId,
+        role: 'guardian' as AppRole,
+      });
+    }
+  }, []);
+
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          // Defer Supabase calls with setTimeout to prevent deadlock
           setTimeout(() => {
-            fetchUserRole(currentSession.user.id);
-            fetchGuardianProfile(currentSession.user.id);
+            const u = currentSession.user;
+            ensureProfileAndRole(u.id, u.email || '', u.user_metadata);
+            fetchUserRole(u.id);
+            fetchGuardianProfile(u.id);
           }, 0);
         } else {
           setRole(null);
@@ -183,19 +215,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
-        fetchUserRole(existingSession.user.id);
-        fetchGuardianProfile(existingSession.user.id);
+        const u = existingSession.user;
+        ensureProfileAndRole(u.id, u.email || '', u.user_metadata);
+        fetchUserRole(u.id);
+        fetchGuardianProfile(u.id);
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchUserRole, fetchGuardianProfile]);
+  }, [fetchUserRole, fetchGuardianProfile, ensureProfileAndRole]);
 
   // Fetch linked seniors when user is authenticated and is a guardian
   useEffect(() => {
