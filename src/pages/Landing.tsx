@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { HeroCarousel } from '@/components/landing/HeroCarousel';
 import { useState, useRef } from 'react';
+import { lovable } from '@/integrations/lovable/index';
+import { toast } from 'sonner';
 
 const stagger = {
   hidden: { opacity: 0 },
