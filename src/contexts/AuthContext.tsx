@@ -283,6 +283,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user_id: data.user.id,
         role: 'guardian' as AppRole
       });
+
+      // Send welcome email
+      sendWelcomeEmail(email, fullName, phone);
     }
 
     return { error: null };
