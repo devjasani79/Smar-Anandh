@@ -239,11 +239,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
         const u = existingSession.user;
-        ensureProfileAndRole(u.id, u.email || '', u.user_metadata);
-        fetchUserRole(u.id);
-        fetchGuardianProfile(u.id);
+        ensureProfileAndRole(u.id, u.email || '', u.user_metadata)
+          .then(() => {
+            fetchUserRole(u.id);
+            fetchGuardianProfile(u.id);
+          })
+          .catch((err) => console.error('Profile/role setup failed:', err))
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
