@@ -239,11 +239,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
         const u = existingSession.user;
-        ensureProfileAndRole(u.id, u.email || '', u.user_metadata);
-        fetchUserRole(u.id);
-        fetchGuardianProfile(u.id);
+        ensureProfileAndRole(u.id, u.email || '', u.user_metadata)
+          .then(() => {
+            fetchUserRole(u.id);
+            fetchGuardianProfile(u.id);
+          })
+          .catch((err) => console.error('Profile/role setup failed:', err))
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -371,13 +376,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'PIN must be 4 digits' };
     }
 
-    if (!phone || phone.length < 10) {
-      return { success: false, error: 'Please enter a valid phone number' };
+    const normalizedPhone = phone.trim().replace(/\s/g, '').replace(/^\+91/, '');
+    if (!/^\d{10}$/.test(normalizedPhone)) {
+      return { success: false, error: 'Please enter a valid 10-digit phone number' };
     }
 
     try {
       const { data, error } = await supabase.rpc('validate_family_pin_with_phone', {
-        guardian_phone: phone,
+        guardian_phone: normalizedPhone,
         input_pin: pin
       });
 

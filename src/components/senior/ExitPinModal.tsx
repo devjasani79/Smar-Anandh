@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ExitPinModalProps {
@@ -20,7 +20,10 @@ export function ExitPinModal({ isOpen, onClose, onSuccess, seniorId }: ExitPinMo
       const newPin = pin + digit;
       setPin(newPin);
       setError('');
-      if (newPin.length === 4) handleSubmit(newPin);
+      if (newPin.length === 4) {
+        setIsLoading(true);
+        setTimeout(() => handleSubmit(newPin), 300);
+      }
     }
   };
 
@@ -89,9 +92,7 @@ export function ExitPinModal({ isOpen, onClose, onSuccess, seniorId }: ExitPinMo
                   </p>
                 </div>
               </div>
-              <button onClick={handleClose} className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
+              {/* X button removed - security: exit only via correct PIN */}
             </div>
 
             <div className="flex justify-center gap-3 mb-4">

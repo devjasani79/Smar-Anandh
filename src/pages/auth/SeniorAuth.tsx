@@ -24,10 +24,12 @@ export default function SeniorAuth() {
   }
 
   const handlePhoneSubmit = () => {
-    if (phone.length < 10) {
-      setError('Please enter a valid phone number');
+    const normalized = phone.trim().replace(/\s/g, '').replace(/^\+91/, '');
+    if (!/^\d{10}$/.test(normalized)) {
+      setError('कृपया 10 अंकों का फ़ोन नंबर दर्ज करें');
       return;
     }
+    setPhone(normalized);
     setError('');
     setStep('pin');
   };
@@ -39,7 +41,7 @@ export default function SeniorAuth() {
       setError('');
       
       if (newPin.length === 4) {
-        handlePinSubmit(newPin);
+        setTimeout(() => handlePinSubmit(newPin), 300);
       }
     }
   };
