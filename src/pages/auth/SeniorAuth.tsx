@@ -41,7 +41,7 @@ export default function SeniorAuth() {
       setError('');
       
       if (newPin.length === 4) {
-        handlePinSubmit(newPin);
+        setTimeout(() => handlePinSubmit(newPin), 300);
       }
     }
   };

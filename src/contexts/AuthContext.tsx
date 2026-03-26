@@ -376,13 +376,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'PIN must be 4 digits' };
     }
 
-    if (!phone || phone.length < 10) {
-      return { success: false, error: 'Please enter a valid phone number' };
+    const normalizedPhone = phone.trim().replace(/\s/g, '').replace(/^\+91/, '');
+    if (!/^\d{10}$/.test(normalizedPhone)) {
+      return { success: false, error: 'Please enter a valid 10-digit phone number' };
     }
 
     try {
       const { data, error } = await supabase.rpc('validate_family_pin_with_phone', {
-        guardian_phone: phone,
+        guardian_phone: normalizedPhone,
         input_pin: pin
       });
 

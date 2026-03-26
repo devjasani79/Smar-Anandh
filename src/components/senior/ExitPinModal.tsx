@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ExitPinModalProps {
