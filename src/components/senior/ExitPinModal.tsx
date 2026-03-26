@@ -92,9 +92,7 @@ export function ExitPinModal({ isOpen, onClose, onSuccess, seniorId }: ExitPinMo
                   </p>
                 </div>
               </div>
-              <button onClick={handleClose} className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
+              {/* X button removed - security: exit only via correct PIN */}
             </div>
 
             <div className="flex justify-center gap-3 mb-4">
