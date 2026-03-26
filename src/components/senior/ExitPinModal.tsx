@@ -20,7 +20,10 @@ export function ExitPinModal({ isOpen, onClose, onSuccess, seniorId }: ExitPinMo
       const newPin = pin + digit;
       setPin(newPin);
       setError('');
-      if (newPin.length === 4) handleSubmit(newPin);
+      if (newPin.length === 4) {
+        setIsLoading(true);
+        setTimeout(() => handleSubmit(newPin), 300);
+      }
     }
   };
 
