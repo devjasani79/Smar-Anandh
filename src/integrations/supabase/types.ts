@@ -491,6 +491,10 @@ export type Database = {
         Args: { _senior_id: string; _user_id: string }
         Returns: boolean
       }
+      validate_exit_pin: {
+        Args: { input_pin: string; senior_uuid: string }
+        Returns: boolean
+      }
       validate_family_pin: {
         Args: { input_pin: string }
         Returns: {
