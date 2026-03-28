@@ -36,24 +36,30 @@ export function ExitPinModal({ isOpen, onClose, onSuccess, seniorId }: ExitPinMo
     setIsLoading(true);
     setError('');
 
-    const { data, error: dbError } = await supabase
-      .from('seniors')
-      .select('family_pin')
-      .eq('id', seniorId)
-      .single();
+    try {
+      const { data, error: rpcError } = await supabase.rpc('validate_exit_pin', {
+        senior_uuid: seniorId,
+        input_pin: pinVal,
+      });
 
-    if (dbError || !data) {
+      if (rpcError) {
+        console.error('Exit PIN validation error:', rpcError);
+        setError('Verification failed');
+        setPin('');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data === true) {
+        onSuccess();
+        setPin('');
+      } else {
+        setError('Galat PIN. Phir se try karein.');
+        setPin('');
+      }
+    } catch (err) {
+      console.error('Exit PIN exception:', err);
       setError('Verification failed');
-      setPin('');
-      setIsLoading(false);
-      return;
-    }
-
-    if (data.family_pin === pinVal) {
-      onSuccess();
-      setPin('');
-    } else {
-      setError('Galat PIN. Phir se try karein.');
       setPin('');
     }
     setIsLoading(false);
