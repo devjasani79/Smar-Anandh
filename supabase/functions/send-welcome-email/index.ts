@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { SmtpClient } from "npm:nodemailer@6.9.12"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
