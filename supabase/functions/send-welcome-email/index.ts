@@ -78,7 +78,6 @@ function buildWelcomeHtml(data: {
     </div>
 
     ${senior_name ? `
-    <!-- Senior Details -->
     <div class="section green">
       <h3>🧓 Senior Profile</h3>
       <div class="row"><span class="label">Name</span><span class="val">${senior_name}</span></div>
@@ -96,7 +95,6 @@ function buildWelcomeHtml(data: {
 
     <div class="divider"></div>
 
-    <!-- Features Overview -->
     <h3 style="text-align:center;color:#1A1A1A;margin-bottom:4px">✨ What SmarAnandh Does</h3>
     <p style="text-align:center;color:#888;font-size:13px;margin-top:0">Everything your parents need, nothing they don't</p>
     <div class="feature-grid">
@@ -108,17 +106,15 @@ function buildWelcomeHtml(data: {
 
     <div class="divider"></div>
 
-    <!-- Quick Setup Guide -->
     <h3 style="color:#1A1A1A;margin-bottom:12px">📋 Quick Setup Guide</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Add Your Senior's Profile</strong> — Name, photo, language preference. Their photo appears on the home screen!</div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Set Up Medicines</strong> — Add medications with dosage & timing. You can even scan a prescription photo!</div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Create a Family PIN</strong> — A simple 4-digit code your senior uses with your phone number to log in.</div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Add Family Members</strong> — Add photos & phone numbers so your senior can call anyone with one tap.</div></div>
-    <div class="step"><div class="step-num">5</div><div class="step-text"><strong>Hand Over the Phone</strong> — Open Senior Mode. Big buttons, Hindi labels, zero confusion. They're set!</div></div>
+    <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Add Your Senior's Profile</strong> — Name, photo, language preference.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Set Up Medicines</strong> — Add medications with dosage & timing.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Create a Family PIN</strong> — A simple 4-digit code for senior login.</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Add Family Members</strong> — Photos & phone numbers for one-tap calling.</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-text"><strong>Hand Over the Phone</strong> — Open Senior Mode. Big buttons, Hindi labels.</div></div>
 
     <div class="divider"></div>
 
-    <!-- Quick Links -->
     <div style="text-align:center;margin:20px 0">
       <p style="font-size:15px;font-weight:600;color:#1A1A1A;margin-bottom:14px">🚀 Get Started Now</p>
       <a href="${appUrl}/auth" class="btn">Open Guardian Dashboard →</a>
@@ -128,7 +124,6 @@ function buildWelcomeHtml(data: {
 
     <div class="divider"></div>
 
-    <!-- About Us / Contact -->
     <div class="section" style="border-left-color:#6D4C41">
       <h3 style="color:#6D4C41">📞 Need Help?</h3>
       <p style="font-size:14px;line-height:1.6;margin:0">We're here for you — just like you're there for your parents.</p>
@@ -178,25 +173,25 @@ serve(async (req) => {
       throw new Error('GMAIL_APP_PASSWORD is not configured')
     }
 
-    const { SmtpClient } = await import("https://deno.land/x/smtp@v0.7.0/mod.ts")
+    // Use nodemailer via npm: specifier (compatible with Deno edge runtime)
+    const nodemailer = await import("npm:nodemailer@6.9.12")
 
-    const client = new SmtpClient()
-    await client.connectTLS({
-      hostname: "smtp.gmail.com",
+    const transporter = nodemailer.default.createTransport({
+      host: 'smtp.gmail.com',
       port: 465,
-      username: GMAIL_USER,
-      password: GMAIL_PASS,
+      secure: true,
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_PASS,
+      },
     })
 
-    await client.send({
-      from: GMAIL_USER,
+    await transporter.sendMail({
+      from: `"SmarAnandh" <${GMAIL_USER}>`,
       to: payload.guardian_email,
       subject,
-      content: "text/html",
       html,
     })
-
-    await client.close()
 
     return new Response(
       JSON.stringify({ success: true, message: 'Welcome email sent' }),
