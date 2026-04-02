@@ -141,7 +141,7 @@ function buildWelcomeHtml(data: {
   <div class="footer">
     <p>Made with ❤️ in India for Indian families</p>
     <p>© 2026 SmarAnandh. All rights reserved.</p>
-    <p style="font-size:11px;margin-top:8px">You're receiving this because you signed up at smaranandh.lovable.app</p>
+    <p style="font-size:11px;margin-top:8px">You're receiving this because you signed up at smar-anandh.vercel.app</p>
   </div>
 </div>
 </body>
