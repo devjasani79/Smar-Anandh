@@ -322,8 +322,11 @@ export default function GuardianAuth() {
               onClick={async () => {
                 setSubmitting(true);
                 try {
-                  const { error } = await lovable.auth.signInWithOAuth("google", {
-                    redirect_uri: window.location.origin,
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: 'https://smar-anandh.vercel.app/guardian',
+                    },
                   });
                   if (error) {
                     toast.error('Google sign-in failed. Please try again.');
