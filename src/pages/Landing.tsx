@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { HeroCarousel } from '@/components/landing/HeroCarousel';
 import { useState, useRef } from 'react';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const stagger = {
@@ -248,8 +248,11 @@ export default function Landing() {
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                 onClick={async () => {
                   try {
-                    const { error } = await lovable.auth.signInWithOAuth("google", {
-                      redirect_uri: window.location.origin,
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: {
+                        redirectTo: 'https://smar-anandh.vercel.app/guardian',
+                      },
                     });
                     if (error) {
                       toast.error('Google sign-in failed. Please try again.');

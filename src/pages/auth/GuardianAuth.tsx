@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.string().email('Please enter a valid email');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -322,8 +322,11 @@ export default function GuardianAuth() {
               onClick={async () => {
                 setSubmitting(true);
                 try {
-                  const { error } = await lovable.auth.signInWithOAuth("google", {
-                    redirect_uri: window.location.origin,
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: 'https://smar-anandh.vercel.app/guardian',
+                    },
                   });
                   if (error) {
                     toast.error('Google sign-in failed. Please try again.');

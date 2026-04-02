@@ -262,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, role, refreshLinkedSeniors]);
 
   const signUp = async (email: string, password: string, fullName: string, phone: string) => {
-    const redirectUrl = `${window.location.origin}/guardian`;
+    const redirectUrl = 'https://smar-anandh.vercel.app/guardian';
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -317,7 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`
+      redirectTo: 'https://smar-anandh.vercel.app/auth/reset-password'
     });
     return { error };
   };
