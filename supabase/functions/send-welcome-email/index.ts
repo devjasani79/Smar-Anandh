@@ -129,7 +129,7 @@ function buildWelcomeHtml(data: {
       <p style="font-size:14px;line-height:1.6;margin:0">We're here for you — just like you're there for your parents.</p>
       <p style="font-size:14px;margin:8px 0 0">
         📧 <strong>Email:</strong> <a href="mailto:devjasani79@gmail.com" style="color:#FF9933">devjasani79@gmail.com</a><br/>
-        🌐 <strong>Website:</strong> <a href="${appUrl}" style="color:#FF9933">smaranandh.lovable.app</a>
+        🌐 <strong>Website:</strong> <a href="${appUrl}" style="color:#FF9933">smar-anandh.vercel.app</a>
       </p>
     </div>
 
