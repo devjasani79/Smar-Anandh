@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { HeroCarousel } from '@/components/landing/HeroCarousel';
 import { useState, useRef } from 'react';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const stagger = {
