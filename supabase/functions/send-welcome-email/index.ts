@@ -15,7 +15,7 @@ function buildWelcomeHtml(data: {
 }) {
   const { guardian_name, guardian_email, guardian_phone, senior_name, senior_preferred_name, family_pin } = data;
   const name = guardian_name || 'there';
-  const appUrl = 'https://smaranandh.lovable.app';
+  const appUrl = 'https://smar-anandh.vercel.app';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -129,7 +129,7 @@ function buildWelcomeHtml(data: {
       <p style="font-size:14px;line-height:1.6;margin:0">We're here for you — just like you're there for your parents.</p>
       <p style="font-size:14px;margin:8px 0 0">
         📧 <strong>Email:</strong> <a href="mailto:devjasani79@gmail.com" style="color:#FF9933">devjasani79@gmail.com</a><br/>
-        🌐 <strong>Website:</strong> <a href="${appUrl}" style="color:#FF9933">smaranandh.lovable.app</a>
+        🌐 <strong>Website:</strong> <a href="${appUrl}" style="color:#FF9933">smar-anandh.vercel.app</a>
       </p>
     </div>
 
@@ -141,7 +141,7 @@ function buildWelcomeHtml(data: {
   <div class="footer">
     <p>Made with ❤️ in India for Indian families</p>
     <p>© 2026 SmarAnandh. All rights reserved.</p>
-    <p style="font-size:11px;margin-top:8px">You're receiving this because you signed up at smaranandh.lovable.app</p>
+    <p style="font-size:11px;margin-top:8px">You're receiving this because you signed up at smar-anandh.vercel.app</p>
   </div>
 </div>
 </body>
