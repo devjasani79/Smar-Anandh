@@ -51,7 +51,7 @@ Every feature passes three tests:
 
 **Solution:**
 - Camera-based prescription capture using device camera
-- OCR via Google Gemini Vision API (available through Lovable AI)
+- OCR via Google Gemini Vision API (using your own Gemini API key)
 - Extract medicine name, dosage, frequency, duration automatically
 - Confirm & edit before saving — human always has final say
 - Refill reminders based on duration + start date math
@@ -71,7 +71,7 @@ Every feature passes three tests:
 - Push notifications via service workers (no Firebase dependency)
 - "Good Morning" automated greeting with weather + day info
 
-**Tech:** Web Audio API for recording, Lovable Cloud storage for voice files, realtime subscriptions for feed updates.
+**Tech:** Web Audio API for recording, cloud storage for voice files, realtime subscriptions for feed updates.
 
 **Impact:** Communication without needing any other app. Everything in one place.
 
@@ -81,7 +81,7 @@ Every feature passes three tests:
 **Problem:** 90% of seniors report loneliness when family is away. They need someone to talk to at 3 AM.
 
 **Solution:**
-- Text-based chat companion powered by Gemini (available through Lovable AI, no API key needed)
+- Text-based chat companion powered by Gemini (using your own Gemini API key)
 - Personality: Warm, respectful, speaks in Hinglish
 - Context-aware: Knows their name, medicines, preferences
 - Daily routines: "Bauji, subah ki chai ho gayi? Aaj yoga ka din hai!"
@@ -197,8 +197,8 @@ Every feature passes three tests:
 
 ### Current Architecture (0–1K users)
 ```
-Frontend: React + Vite (Lovable hosting)
-Backend: Lovable Cloud (PostgreSQL + Auth + Storage + Edge Functions)
+Frontend: React + Vite on Vercel
+Backend: PostgreSQL + Auth + Storage + Edge Functions
 Email: Gmail SMTP via Edge Functions
 Cron: pg_cron + pg_net for scheduled notifications
 ```
@@ -209,7 +209,7 @@ Frontend: React + CDN (CloudFront or Vercel Edge)
 Backend: Supabase Pro (connection pooling, read replicas)
 Cache: Edge function caching for hot queries
 Queue: pg_cron → dedicated job queue for notifications
-AI: Gemini via Lovable AI (no key management)
+AI: Gemini API with self-managed credentials
 Push: Web Push API + service workers
 SMS: MSG91 or Textlocal (Indian SMS gateway)
 Analytics: PostHog (self-hosted) or Mixpanel

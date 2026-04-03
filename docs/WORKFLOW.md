@@ -52,7 +52,7 @@ See `docs/futures.md` for the complete roadmap including AI companions, wearable
 | Frontend | React 18 + TypeScript + Vite |
 | Styling | Tailwind CSS + shadcn/ui |
 | Animation | Framer Motion |
-| Backend | Lovable Cloud (PostgreSQL, Auth, Storage, Edge Functions) |
+| Backend | PostgreSQL backend (Auth, Storage, Edge Functions) |
 | Fonts | Playfair Display (headings), Nunito (body), Poppins (UI) |
 | State | React Query + Context API |
 | Routing | React Router v6 |
