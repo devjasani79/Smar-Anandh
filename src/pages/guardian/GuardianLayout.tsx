@@ -30,10 +30,17 @@ export default function GuardianLayout() {
   const [linkedSeniors, setLinkedSeniors] = useState<LinkedSenior[]>([]);
   const [selectedSenior, setSelectedSenior] = useState<string | null>(null);
 
-  // Redirect if not guardian
+  // Redirect if not guardian — wait for role to be resolved before redirecting
   useEffect(() => {
-    if (!loading && (!user || role !== 'guardian')) {
-      navigate('/auth');
+    if (loading) return; // still initializing auth
+    if (!user) {
+      navigate('/auth', { replace: true });
+      return;
+    }
+    // If user exists but role is still null, wait for it to load
+    if (role === null) return;
+    if (role !== 'guardian') {
+      navigate('/auth', { replace: true });
     }
   }, [user, role, loading, navigate]);
 
@@ -82,10 +89,10 @@ export default function GuardianLayout() {
     return location.pathname.startsWith(path);
   };
 
-  if (loading) {
+  if (loading || (user && role === null)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-2xl">Loading...</div>
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
