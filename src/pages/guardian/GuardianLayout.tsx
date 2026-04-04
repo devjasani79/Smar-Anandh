@@ -89,10 +89,10 @@ export default function GuardianLayout() {
     return location.pathname.startsWith(path);
   };
 
-  if (loading) {
+  if (loading || (user && role === null)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-2xl">Loading...</div>
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
