@@ -325,7 +325,7 @@ export default function GuardianAuth() {
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                      redirectTo: 'https://smar-anandh.vercel.app/guardian',
+                      redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/guardian`,
                     },
                   });
                   if (error) {
