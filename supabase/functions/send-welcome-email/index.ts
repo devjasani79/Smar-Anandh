@@ -15,7 +15,7 @@ function buildWelcomeHtml(data: {
 }) {
   const { guardian_name, guardian_email, guardian_phone, senior_name, senior_preferred_name, family_pin } = data;
   const name = guardian_name || 'there';
-  const appUrl = 'https://smar-anandh.vercel.app';
+  const appUrl = Deno.env.get('APP_URL') || 'https://smar-anandh.vercel.app';
 
   return `<!DOCTYPE html>
 <html lang="en">

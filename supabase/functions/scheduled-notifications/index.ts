@@ -214,7 +214,7 @@ serve(async (req) => {
                       <p>Hi ${profile?.full_name || 'Guardian'},</p>
                       <p>You have <strong>${count} unread notification${count > 1 ? 's' : ''}</strong> waiting for you.</p>
                       <p>Open the app to review medication status, activity updates, and more.</p>
-                      <a href="https://smar-anandh.vercel.app/guardian" 
+                      <a href="${Deno.env.get('APP_URL') || 'https://smar-anandh.vercel.app'}/guardian" 
                          style="display:inline-block;background:#FF9933;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
                         Open Dashboard →
                       </a>
