@@ -49,6 +49,39 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          operation: string
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation: string
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation?: string
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       family_members: {
         Row: {
           created_at: string | null
@@ -208,6 +241,47 @@ export type Database = {
             foreignKeyName: "joy_preferences_senior_id_fkey"
             columns: ["senior_id"]
             isOneToOne: true
+            referencedRelation: "seniors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medication_adherence_stats: {
+        Row: {
+          adherence_date: string
+          adherence_percentage: number
+          created_at: string | null
+          id: string
+          meds_missed: number
+          meds_taken: number
+          meds_total: number
+          senior_id: string
+        }
+        Insert: {
+          adherence_date: string
+          adherence_percentage?: number
+          created_at?: string | null
+          id?: string
+          meds_missed?: number
+          meds_taken?: number
+          meds_total?: number
+          senior_id: string
+        }
+        Update: {
+          adherence_date?: string
+          adherence_percentage?: number
+          created_at?: string | null
+          id?: string
+          meds_missed?: number
+          meds_taken?: number
+          meds_total?: number
+          senior_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_adherence_stats_senior_id_fkey"
+            columns: ["senior_id"]
+            isOneToOne: false
             referencedRelation: "seniors"
             referencedColumns: ["id"]
           },
@@ -491,6 +565,7 @@ export type Database = {
         Args: { _senior_id: string; _user_id: string }
         Returns: boolean
       }
+      refresh_adherence_stats: { Args: never; Returns: undefined }
       validate_exit_pin: {
         Args: { input_pin: string; senior_uuid: string }
         Returns: boolean
