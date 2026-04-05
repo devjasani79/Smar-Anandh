@@ -251,7 +251,10 @@ export default function Landing() {
                     const { error } = await supabase.auth.signInWithOAuth({
                       provider: 'google',
                       options: {
-                        redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/guardian`,
+                        redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/auth`,
+                        queryParams: {
+                          prompt: 'select_account',
+                        },
                       },
                     });
                     if (error) {

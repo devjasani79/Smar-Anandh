@@ -40,6 +40,7 @@ interface AuthContextType {
   role: AppRole | null;
   guardianProfile: GuardianProfile | null;
   linkedSeniors: LinkedSenior[];
+  linkedSeniorsLoaded: boolean;
   
   // Session mode (for switching between guardian/senior views)
   sessionMode: SessionMode;
@@ -74,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
   const [linkedSeniors, setLinkedSeniors] = useState<LinkedSenior[]>([]);
+  const [linkedSeniorsLoaded, setLinkedSeniorsLoaded] = useState(false);
   const [sessionMode, setSessionMode] = useState<SessionMode>(null);
   const [seniorSession, setSeniorSession] = useState<SeniorSession | null>(null);
 
@@ -142,11 +144,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshLinkedSeniors = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLinkedSeniors([]);
+      setLinkedSeniorsLoaded(false);
+      return;
+    }
     
-    const { data } = await supabase.rpc('get_guardian_seniors', { 
+    const { data, error } = await supabase.rpc('get_guardian_seniors', { 
       guardian_user_id: user.id 
     });
+
+    if (error) {
+      console.error('Failed to fetch linked seniors:', error);
+      setLinkedSeniors([]);
+      setLinkedSeniorsLoaded(true);
+      return;
+    }
     
     if (data) {
       setLinkedSeniors(data.map(s => ({
@@ -158,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isPrimary: s.is_primary || false
       })));
     }
+    setLinkedSeniorsLoaded(true);
   }, [user]);
 
   const sendWelcomeEmail = useCallback(async (email: string, fullName?: string, phone?: string) => {
@@ -228,6 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setGuardianProfile(null);
           setLinkedSeniors([]);
+          setLinkedSeniorsLoaded(false);
           // Don't clear senior session on auth state change — standalone seniors
           // have no Supabase user but still have a valid seniorSession from
           // localStorage (phone+PIN dual-key auth). Only clear on explicit signOut.
@@ -310,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
     setGuardianProfile(null);
     setLinkedSeniors([]);
+    setLinkedSeniorsLoaded(false);
     setSessionMode(null);
     setSeniorSession(null);
     localStorage.removeItem(SESSION_MODE_KEY);
@@ -424,6 +440,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       guardianProfile,
       linkedSeniors,
+      linkedSeniorsLoaded,
       sessionMode,
       seniorSession,
       signUp,

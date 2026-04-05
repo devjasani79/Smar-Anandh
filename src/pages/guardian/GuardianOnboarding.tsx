@@ -239,10 +239,7 @@ export default function GuardianOnboarding() {
       
       // Send welcome email (fire and forget)
       try {
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        fetch(`https://${projectId}.supabase.co/functions/v1/send-welcome-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await supabase.functions.invoke('send-welcome-email', {
           body: JSON.stringify({
             guardian_email: user.email,
             guardian_name: guardianProfile?.fullName || '',
@@ -251,7 +248,7 @@ export default function GuardianOnboarding() {
             senior_preferred_name: seniorData.preferredName,
             family_pin: pin,
           }),
-        }).catch(console.error);
+        });
       } catch (e) {
         console.error('Welcome email error:', e);
       }

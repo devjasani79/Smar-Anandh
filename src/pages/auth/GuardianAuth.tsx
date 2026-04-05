@@ -16,7 +16,7 @@ const phoneSchema = z.string().min(10, 'Please enter a valid phone number');
 
 export default function GuardianAuth() {
   const navigate = useNavigate();
-  const { user, loading, linkedSeniors, signUp, signIn, resetPassword } = useAuth();
+  const { user, loading, linkedSeniors, linkedSeniorsLoaded, signUp, signIn, resetPassword } = useAuth();
   
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -32,7 +32,7 @@ export default function GuardianAuth() {
 
   // Redirect if already logged in - only once
   useEffect(() => {
-    if (!loading && user && !hasRedirected.current) {
+    if (!loading && user && linkedSeniorsLoaded && !hasRedirected.current) {
       hasRedirected.current = true;
       // Check if user has linked seniors - if not, send to onboarding
       if (linkedSeniors.length === 0) {
@@ -41,7 +41,7 @@ export default function GuardianAuth() {
         navigate('/guardian', { replace: true });
       }
     }
-  }, [user, loading, linkedSeniors.length, navigate]);
+  }, [user, loading, linkedSeniorsLoaded, linkedSeniors.length, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -325,7 +325,10 @@ export default function GuardianAuth() {
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                      redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/guardian`,
+                      redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/auth`,
+                      queryParams: {
+                        prompt: 'select_account',
+                      },
                     },
                   });
                   if (error) {
