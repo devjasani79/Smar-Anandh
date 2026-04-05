@@ -15,7 +15,7 @@ export function useAdherenceStats(seniorId: string) {
     queryKey: ['adherenceStats', seniorId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('medication_adherence_stats' as any)
+        .from('medication_adherence_stats')
         .select('*')
         .eq('senior_id', seniorId)
         .order('adherence_date', { ascending: false })
@@ -31,6 +31,6 @@ export function useAdherenceStats(seniorId: string) {
 
 export function useRefreshAdherence() {
   return async () => {
-    await (supabase.rpc as any)('refresh_adherence_stats');
+    await supabase.rpc('refresh_adherence_stats' as any);
   };
 }
