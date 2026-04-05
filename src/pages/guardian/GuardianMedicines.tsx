@@ -254,7 +254,7 @@ export default function GuardianMedicines() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="space-y-4"
       >
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
@@ -264,20 +264,22 @@ export default function GuardianMedicines() {
             Add, edit, and schedule medications
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <TactileButton
             variant="neutral"
             onClick={() => fileInputRef.current?.click()}
+            className="flex-1 sm:flex-none min-w-0"
           >
-            <Upload className="w-5 h-5 mr-2" />
-            Scan Prescription
+            <Upload className="w-5 h-5 mr-2 flex-shrink-0" />
+            <span className="truncate">Scan Prescription</span>
           </TactileButton>
           <TactileButton
             variant="primary"
             onClick={() => setShowAddModal(true)}
+            className="flex-1 sm:flex-none min-w-0"
           >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Medicine
+            <Plus className="w-5 h-5 mr-2 flex-shrink-0" />
+            <span className="truncate">Add Medicine</span>
           </TactileButton>
         </div>
         <input

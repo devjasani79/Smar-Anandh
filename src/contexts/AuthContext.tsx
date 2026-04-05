@@ -228,8 +228,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setGuardianProfile(null);
           setLinkedSeniors([]);
-          setSessionMode(null);
-          setSeniorSession(null);
+          // Don't clear senior session on auth state change — standalone seniors
+          // have no Supabase user but still have a valid seniorSession from
+          // localStorage (phone+PIN dual-key auth). Only clear on explicit signOut.
         }
       }
     );
