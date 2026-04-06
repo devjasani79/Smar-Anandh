@@ -8,7 +8,7 @@ export function useExportData() {
   const exportSeniorData = async (seniorId: string, seniorName: string) => {
     setExporting(true);
     try {
-      const { data, error } = await (supabase.rpc as any)('export_senior_data', {
+      const { data, error } = await supabase.rpc('export_senior_data', {
         senior_uuid: seniorId,
       });
 
