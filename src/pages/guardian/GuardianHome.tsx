@@ -60,10 +60,12 @@ export default function GuardianHome() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (selectedSenior) {
-      fetchData();
-      subscribeToRealtime();
-    }
+    if (!selectedSenior) return;
+    fetchData();
+    const channel = subscribeToRealtime();
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [selectedSenior]);
 
   const fetchData = async () => {
@@ -118,7 +120,7 @@ export default function GuardianHome() {
 
   const subscribeToRealtime = () => {
     const channel = supabase
-      .channel('guardian-realtime')
+      .channel(`guardian-realtime-${selectedSenior}`)
       .on(
         'postgres_changes',
         {
@@ -141,26 +143,29 @@ export default function GuardianHome() {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return channel;
   };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
+      case 'medication_taken':
       case 'medicine_taken': return <Pill className="w-5 h-5 text-success" />;
+      case 'medication_missed': return <Pill className="w-5 h-5 text-destructive" />;
+      case 'medication_snoozed': return <Pill className="w-5 h-5 text-yellow-500" />;
       case 'music_played': return <Music className="w-5 h-5 text-primary" />;
       case 'video_watched': return <Eye className="w-5 h-5 text-primary" />;
       case 'photos_viewed': return <Image className="w-5 h-5 text-primary" />;
       case 'game_played': return <Gamepad2 className="w-5 h-5 text-primary" />;
       case 'sos_triggered': return <AlertCircle className="w-5 h-5 text-destructive" />;
       default: return <ActivityIcon className="w-5 h-5 text-muted-foreground" />;
-    }
   };
 
   const getActivityLabel = (type: string, data: Record<string, unknown>) => {
     switch (type) {
-      case 'medicine_taken': return `${data.medicine_name || 'Medicine'} taken`;
+      case 'medication_taken':
+      case 'medicine_taken': return `${data.medicine_name || 'Medicine'} taken ✅`;
+      case 'medication_missed': return `${data.medicine_name || 'Medicine'} missed ❌`;
+      case 'medication_snoozed': return `${data.medicine_name || 'Medicine'} snoozed ⏰`;
       case 'music_played': return `Listened to ${data.duration || ''} mins of music`;
       case 'video_watched': return `Watched video for ${data.duration || ''} mins`;
       case 'photos_viewed': return 'Viewed family photos';
