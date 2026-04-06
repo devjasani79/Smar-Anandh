@@ -59,7 +59,7 @@ const App = () => (
               <Route index element={<GuardianHome />} />
               <Route path="medicines" element={<GuardianMedicines />} />
               <Route path="joy" element={<GuardianJoy />} />
-              <Route path="vitals" element={<GuardianHome />} />
+              <Route path="vitals" element={<GuardianSettings />} />
               <Route path="settings" element={<GuardianSettings />} />
             </Route>
             <Route path="/guardian/onboarding" element={<GuardianOnboarding />} />
