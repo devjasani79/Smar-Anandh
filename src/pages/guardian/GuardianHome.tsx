@@ -158,6 +158,7 @@ export default function GuardianHome() {
       case 'game_played': return <Gamepad2 className="w-5 h-5 text-primary" />;
       case 'sos_triggered': return <AlertCircle className="w-5 h-5 text-destructive" />;
       default: return <ActivityIcon className="w-5 h-5 text-muted-foreground" />;
+    }
   };
 
   const getActivityLabel = (type: string, data: Record<string, unknown>) => {
