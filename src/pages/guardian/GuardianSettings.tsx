@@ -754,7 +754,7 @@ export default function GuardianSettings() {
       )}
 
       {/* Audit Log */}
-      <AuditLogViewer />
+      <AuditLogViewer seniorId={selectedSenior || undefined} />
 
       {/* Danger Zone */}
       <motion.div
