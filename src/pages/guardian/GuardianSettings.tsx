@@ -297,7 +297,7 @@ export default function GuardianSettings() {
     setDeleting(true);
     
     // Use cascade deletion RPC for complete cleanup
-    const { error } = await supabase.rpc('delete_senior_cascade', { 
+    const { error } = await (supabase.rpc as any)('delete_senior_cascade', { 
       senior_uuid: selectedSenior 
     });
     
@@ -329,7 +329,7 @@ export default function GuardianSettings() {
     
     try {
       // Use cascade deletion RPC
-      const { error } = await supabase.rpc('delete_guardian_cascade', {
+      const { error } = await (supabase.rpc as any)('delete_guardian_cascade', {
         guardian_uuid: user.id,
       });
 
