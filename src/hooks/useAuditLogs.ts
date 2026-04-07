@@ -10,11 +10,12 @@ export interface AuditLog {
   new_values: Record<string, any> | null;
   changed_by: string;
   changed_at: string;
+  senior_id?: string | null;
 }
 
-export function useAuditLogs(tableName?: string, recordId?: string) {
+export function useAuditLogs(seniorId?: string, tableName?: string, recordId?: string) {
   return useQuery({
-    queryKey: ['auditLogs', tableName, recordId],
+    queryKey: ['auditLogs', seniorId, tableName, recordId],
     queryFn: async () => {
       let query = supabase
         .from('audit_logs')
@@ -22,6 +23,8 @@ export function useAuditLogs(tableName?: string, recordId?: string) {
         .order('changed_at', { ascending: false })
         .limit(50);
 
+      // Filter by senior_id for data isolation
+      if (seniorId) query = query.eq('senior_id' as any, seniorId);
       if (tableName) query = query.eq('table_name', tableName);
       if (recordId) query = query.eq('record_id', recordId);
 
@@ -29,6 +32,7 @@ export function useAuditLogs(tableName?: string, recordId?: string) {
       if (error) throw error;
       return (data || []) as AuditLog[];
     },
+    enabled: !!seniorId, // Only fetch when seniorId is provided
     staleTime: 5 * 60 * 1000,
   });
 }

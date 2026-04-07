@@ -50,8 +50,8 @@ function getOperationColor(op: string) {
   }
 }
 
-export function AuditLogViewer() {
-  const { data: logs = [], isLoading } = useAuditLogs();
+export function AuditLogViewer({ seniorId }: { seniorId?: string }) {
+  const { data: logs = [], isLoading } = useAuditLogs(seniorId);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
