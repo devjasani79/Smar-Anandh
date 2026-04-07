@@ -152,6 +152,9 @@ export default function GuardianHome() {
       case 'medicine_taken': return <Pill className="w-5 h-5 text-success" />;
       case 'medication_missed': return <Pill className="w-5 h-5 text-destructive" />;
       case 'medication_snoozed': return <Pill className="w-5 h-5 text-yellow-500" />;
+      case 'activity_completed': return <CheckCircle className="w-5 h-5 text-success" />;
+      case 'activity_started': return <ActivityIcon className="w-5 h-5 text-primary" />;
+      case 'mood_check': return <Eye className="w-5 h-5 text-primary" />;
       case 'music_played': return <Music className="w-5 h-5 text-primary" />;
       case 'video_watched': return <Eye className="w-5 h-5 text-primary" />;
       case 'photos_viewed': return <Image className="w-5 h-5 text-primary" />;
@@ -167,6 +170,9 @@ export default function GuardianHome() {
       case 'medicine_taken': return `${data.medicine_name || 'Medicine'} taken ✅`;
       case 'medication_missed': return `${data.medicine_name || 'Medicine'} missed ❌`;
       case 'medication_snoozed': return `${data.medicine_name || 'Medicine'} snoozed ⏰`;
+      case 'activity_completed': return `${data.activity_icon || '✅'} ${data.activity_name || 'Activity'} completed!`;
+      case 'activity_started': return `Started: ${data.activity_name || 'Activity'}`;
+      case 'mood_check': return `Mood: ${data.mood || '😊'}`;
       case 'music_played': return `Listened to ${data.duration || ''} mins of music`;
       case 'video_watched': return `Watched video for ${data.duration || ''} mins`;
       case 'photos_viewed': return 'Viewed family photos';

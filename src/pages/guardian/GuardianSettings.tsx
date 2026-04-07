@@ -296,24 +296,27 @@ export default function GuardianSettings() {
     
     setDeleting(true);
     
-    // Soft delete: mark as deleted
-    const { error } = await supabase
-      .from('seniors')
-      .update({ deleted_at: new Date().toISOString(), deleted_by: user.id } as any)
-      .eq('id', selectedSenior);
+    // Use cascade deletion RPC for complete cleanup
+    const { error } = await (supabase.rpc as any)('delete_senior_cascade', { 
+      senior_uuid: selectedSenior 
+    });
     
     if (error) {
-      toast.error('Failed to delete senior profile');
-    } else {
-      // Revoke guardian link
-      await supabase
-        .from('guardian_senior_links')
-        .update({ revoked_at: new Date().toISOString(), revoked_by: user.id, revocation_reason: 'Senior profile deleted' } as any)
-        .eq('senior_id', selectedSenior);
-      
-      toast.success('Senior profile deleted');
-      await refreshLinkedSeniors();
+      console.error('Cascade delete error:', error);
+      // Fallback: try manual deletion
+      await supabase.from('guardian_senior_links').delete().eq('senior_id', selectedSenior);
+      await supabase.from('joy_preferences').delete().eq('senior_id', selectedSenior);
+      await supabase.from('medication_logs').delete().eq('senior_id', selectedSenior);
+      await supabase.from('medications').delete().eq('senior_id', selectedSenior);
+      await supabase.from('activity_logs').delete().eq('senior_id', selectedSenior);
+      await supabase.from('health_vitals').delete().eq('senior_id', selectedSenior);
+      await supabase.from('family_members').delete().eq('senior_id', selectedSenior);
+      await supabase.from('notifications').delete().eq('senior_id', selectedSenior);
+      await supabase.from('seniors').delete().eq('id', selectedSenior);
     }
+    
+    toast.success('Senior profile and all data deleted');
+    await refreshLinkedSeniors();
     
     setDeleting(false);
     setShowDeleteConfirm(null);
@@ -325,22 +328,29 @@ export default function GuardianSettings() {
     setDeleting(true);
     
     try {
-      // Delete all linked seniors first
-      for (const s of linkedSeniors) {
-        await supabase.from('guardian_senior_links').delete().eq('senior_id', s.id);
-        await supabase.from('joy_preferences').delete().eq('senior_id', s.id);
-        await supabase.from('medication_logs').delete().eq('senior_id', s.id);
-        await supabase.from('medications').delete().eq('senior_id', s.id);
-        await supabase.from('activity_logs').delete().eq('senior_id', s.id);
-        await supabase.from('health_vitals').delete().eq('senior_id', s.id);
-        await supabase.from('seniors').delete().eq('id', s.id);
+      // Use cascade deletion RPC
+      const { error } = await (supabase.rpc as any)('delete_guardian_cascade', {
+        guardian_uuid: user.id,
+      });
+
+      if (error) {
+        console.error('Cascade account delete error:', error);
+        // Fallback: manual cleanup
+        for (const s of linkedSeniors) {
+          await supabase.from('guardian_senior_links').delete().eq('senior_id', s.id);
+          await supabase.from('joy_preferences').delete().eq('senior_id', s.id);
+          await supabase.from('medication_logs').delete().eq('senior_id', s.id);
+          await supabase.from('medications').delete().eq('senior_id', s.id);
+          await supabase.from('activity_logs').delete().eq('senior_id', s.id);
+          await supabase.from('health_vitals').delete().eq('senior_id', s.id);
+          await supabase.from('family_members').delete().eq('senior_id', s.id);
+          await supabase.from('notifications').delete().eq('senior_id', s.id);
+          await supabase.from('seniors').delete().eq('id', s.id);
+        }
+        await supabase.from('profiles').delete().eq('user_id', user.id);
+        await supabase.from('user_roles').delete().eq('user_id', user.id);
       }
       
-      // Delete profile and roles
-      await supabase.from('profiles').delete().eq('user_id', user.id);
-      await supabase.from('user_roles').delete().eq('user_id', user.id);
-      
-      // Sign out
       await signOut();
       toast.success('Account deleted successfully');
       navigate('/');
@@ -744,7 +754,7 @@ export default function GuardianSettings() {
       )}
 
       {/* Audit Log */}
-      <AuditLogViewer />
+      <AuditLogViewer seniorId={selectedSenior || undefined} />
 
       {/* Danger Zone */}
       <motion.div
