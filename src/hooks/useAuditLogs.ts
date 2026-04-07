@@ -24,7 +24,7 @@ export function useAuditLogs(seniorId?: string, tableName?: string, recordId?: s
         .limit(50);
 
       // Filter by senior_id for data isolation
-      if (seniorId) query = query.eq('senior_id' as any, seniorId);
+      if (seniorId) query = query.eq('senior_id', seniorId) as any;
       if (tableName) query = query.eq('table_name', tableName);
       if (recordId) query = query.eq('record_id', recordId);
 
