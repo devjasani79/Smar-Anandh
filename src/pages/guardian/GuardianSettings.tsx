@@ -151,7 +151,9 @@ export default function GuardianSettings() {
         ...data,
         chronic_conditions: data.chronic_conditions || [],
         emergency_contacts: normalizeEmergencyContacts(data.emergency_contacts),
-        family_pin: data.family_pin,
+        // family_pin is a bcrypt hash on the server; expose blank so
+        // the input becomes a "Change PIN" field (4 digits = update).
+        family_pin: '',
       });
     }
     setLoading(false);
@@ -199,16 +201,33 @@ export default function GuardianSettings() {
         chronic_conditions: senior.chronic_conditions,
         nudge_frequency: senior.nudge_frequency,
         emergency_contacts: senior.emergency_contacts,
-        family_pin: senior.family_pin,
       })
       .eq('id', senior.id);
 
     if (error) {
       toast.error('Failed to save changes');
-    } else {
+      setSaving(false);
+      return;
+    }
+
+    // If the guardian typed a fresh 4-digit PIN, hash + store it.
+    if (senior.family_pin && /^\d{4}$/.test(senior.family_pin)) {
+      const { error: pinErr } = await (supabase.rpc as any)('set_family_pin', {
+        _senior_id: senior.id,
+        _new_pin: senior.family_pin,
+      });
+      if (pinErr) {
+        toast.error('Saved details but PIN update failed');
+      } else {
+        toast.success('Settings + PIN updated!');
+        await refreshLinkedSeniors();
+        setSaving(false);
+        return;
+      }
+    }
+
       toast.success('Settings saved!');
       await refreshLinkedSeniors();
-    }
     setSaving(false);
   };
 
@@ -231,7 +250,6 @@ export default function GuardianSettings() {
       .insert({
         name: newSeniorForm.name,
         language: newSeniorForm.language,
-        family_pin: newSeniorForm.familyPin,
         user_id: user.id,
         guardian_email: user.email,
         chronic_conditions: newSeniorForm.chronicConditions
@@ -257,6 +275,12 @@ export default function GuardianSettings() {
         senior_id: newSenior.id,
         is_primary: linkedSeniors.length === 0,
       });
+
+    // Hash + store the PIN server-side
+    await (supabase.rpc as any)('set_family_pin', {
+      _senior_id: newSenior.id,
+      _new_pin: newSeniorForm.familyPin,
+    });
 
     if (linkError) {
       toast.error('Failed to link senior');
