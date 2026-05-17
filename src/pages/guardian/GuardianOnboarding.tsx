@@ -227,7 +227,7 @@ export default function GuardianOnboarding() {
       }
 
       // Step 3b: Hash + store family PIN server-side
-      const { error: pinError } = await supabase.rpc('set_family_pin', {
+      const { error: pinError } = await (supabase.rpc as any)('set_family_pin', {
         _senior_id: senior.id,
         _new_pin: pin,
       });
