@@ -1,1 +1,4 @@
 project_id = "galvqhlqavwibrgakdyx"
+
+[functions.senior-auth-proxy]
+verify_jwt = false

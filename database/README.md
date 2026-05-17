@@ -1,28 +1,37 @@
-## Standalone Supabase SQL
+# `database/` — Standalone Supabase SQL
 
-Use these files for your standalone Supabase project.
+All SQL for the standalone Supabase project lives here. Copy each file
+into the Supabase SQL Editor and run it in the documented order.
 
-### Apply order
+## Layout
 
-1. Run `standalone_dashboard_patch.sql` — creates `medication_adherence_stats` and `audit_logs` tables
-2. Run `qa_fixes_patch.sql` — creates triggers, soft-delete columns, export RPC, RLS fixes
-3. Then run `SELECT public.refresh_adherence_stats();` to backfill adherence data
+```
+database/
+  baseline/                 One-time foundational patches (frozen history)
+    standalone_dashboard_patch.sql
+    qa_fixes_patch.sql
+  add-ons/                  Earlier feature/security patches (frozen)
+    001_fix_audit_log_leak.sql
+    002_cascade_deletion.sql
+    003_activity_completions.sql
+    004_senior_data_proxy_rls.sql
+  migrations/               New work, organised by date
+    YYYY-MM-DD/
+      NNN_short_name.sql
+      README.md
+```
 
-### What standalone_dashboard_patch.sql fixes
+## Apply order for a fresh project
 
-- missing `medication_adherence_stats`
-- missing `audit_logs`
-- guardian dashboard 404s from REST queries to non-existent tables
-- required RLS and helper indexes for those dashboard queries
+1. `baseline/standalone_dashboard_patch.sql`
+2. `baseline/qa_fixes_patch.sql`
+3. `SELECT public.refresh_adherence_stats();`
+4. `add-ons/001` → `002` → `003` → `004` (in order)
+5. Each `migrations/YYYY-MM-DD/` folder in chronological order, files in numeric order. Read the folder's own `README.md` first — some migrations are irreversible or coupled to a client deploy.
 
-### What qa_fixes_patch.sql fixes
+## Conventions
 
-- missing audit log triggers (audit_logs was always empty)
-- missing activity_log triggers on medication status changes (activity feed was disconnected)
-- adherence stats never auto-refreshing (chart always empty)
-- missing soft-delete columns on seniors and guardian_senior_links
-- missing `export_senior_data` RPC (export button was broken)
-- RLS too restrictive on audit_logs (triggers couldn't write)
-- RLS missing for system activity_log inserts
-
-This folder is intentionally focused on incremental patches instead of rewriting your whole database.
+- **Never edit** files under `baseline/` or `add-ons/` — they are history.
+- New work goes in `migrations/YYYY-MM-DD/NNN_short_name.sql`.
+- Every dated folder ships a `README.md` describing intent, ordering, client coupling, and rollback.
+- Schema changes only — data backfills that are part of the schema change can live alongside, but ad-hoc data fixes should be tracked separately.

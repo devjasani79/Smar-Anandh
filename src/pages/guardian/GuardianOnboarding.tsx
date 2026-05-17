@@ -185,7 +185,6 @@ export default function GuardianOnboarding() {
           preferred_name: seniorData.preferredName.trim() || null,
           language: seniorData.language,
           photo_url: seniorData.photoUrl,
-          family_pin: pin,
           guardian_email: user.email,
           user_id: user.id,
           chronic_conditions: seniorData.chronicConditions.length > 0 
@@ -225,6 +224,15 @@ export default function GuardianOnboarding() {
       if (linkError) {
         console.error("Link creation error:", linkError);
         // Don't throw - senior was created successfully
+      }
+
+      // Step 3b: Hash + store family PIN server-side
+      const { error: pinError } = await (supabase.rpc as any)('set_family_pin', {
+        _senior_id: senior.id,
+        _new_pin: pin,
+      });
+      if (pinError) {
+        console.error('set_family_pin error:', pinError);
       }
 
       // Step 4: Create default joy preferences

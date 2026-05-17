@@ -354,19 +354,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Validate PIN against the senior's family_pin
-    const { data, error } = await supabase
-      .from('seniors')
-      .select('id, family_pin')
-      .eq('id', targetSenior.id)
-      .single();
-
-    if (error || !data) {
-      return { success: false, error: 'Unable to validate PIN' };
-    }
-
-    if (data.family_pin !== pin) {
-      return { success: false, error: 'Invalid PIN. Please try again.' };
-    }
+    const { data: ok, error } = await supabase.rpc('validate_exit_pin', {
+      senior_uuid: targetSenior.id,
+      input_pin: pin,
+    });
+    if (error) return { success: false, error: 'Unable to validate PIN' };
+    if (!ok) return { success: false, error: 'Invalid PIN. Please try again.' };
 
     // Set senior session
     setSeniorSession({
@@ -399,29 +392,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { data, error } = await supabase.rpc('validate_family_pin_with_phone', {
-        guardian_phone: normalizedPhone,
-        input_pin: pin
+      const { data, error } = await supabase.functions.invoke('senior-auth-proxy', {
+        body: { phone: normalizedPhone, pin },
       });
 
-      if (error) {
-        console.error('Dual-key validation error:', error);
-        return { success: false, error: 'Unable to validate credentials' };
+      if (error || !data?.access_token) {
+        const msg = (data && (data as any).error) || error?.message || 'Invalid phone or PIN';
+        return { success: false, error: msg };
       }
 
-      if (!data || data.length === 0) {
-        return { success: false, error: 'Invalid phone number or PIN' };
+      // Install the senior JWT as the active session so PostgREST
+      // sees the `senior_id` claim and JWT-scoped RLS applies.
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token ?? data.access_token,
+      });
+      if (setErr) {
+        console.error('setSession failed:', setErr);
+        return { success: false, error: 'Could not establish senior session' };
       }
 
-      const result = data[0];
-      
+      const s = data.senior;
       setSeniorSession({
-        seniorId: result.senior_id,
-        seniorName: result.senior_name,
-        preferredName: result.preferred_name,
-        photoUrl: result.photo_url,
-        language: result.senior_language,
-        guardianId: result.guardian_id
+        seniorId: s.id,
+        seniorName: s.name,
+        preferredName: s.preferred_name,
+        photoUrl: s.photo_url,
+        language: s.language,
+        guardianId: s.guardian_id,
       });
       setSessionMode('senior');
 
