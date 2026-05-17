@@ -616,7 +616,7 @@ export default function GuardianSettings() {
               </div>
 
               <div className="space-y-2">
-                <Label>Family PIN (4 digits)</Label>
+                <Label>Change Family PIN (4 digits)</Label>
                 <Input
                   type="text"
                   maxLength={4}
@@ -625,11 +625,11 @@ export default function GuardianSettings() {
                     const value = e.target.value.replace(/\D/g, '');
                     setSenior(prev => prev ? { ...prev, family_pin: value } : null);
                   }}
-                  placeholder="1234"
+                  placeholder="Leave blank to keep current PIN"
                   className="h-12 font-mono text-lg tracking-widest"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Senior uses this PIN with your phone number to login
+                  PINs are stored encrypted. Enter 4 digits to set a new one; leave blank to keep the existing PIN.
                 </p>
               </div>
 
