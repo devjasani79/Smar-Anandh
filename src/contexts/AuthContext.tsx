@@ -354,19 +354,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Validate PIN against the senior's family_pin
-    const { data, error } = await supabase
-      .from('seniors')
-      .select('id, family_pin')
-      .eq('id', targetSenior.id)
-      .single();
-
-    if (error || !data) {
-      return { success: false, error: 'Unable to validate PIN' };
-    }
-
-    if (data.family_pin !== pin) {
-      return { success: false, error: 'Invalid PIN. Please try again.' };
-    }
+    const { data: ok, error } = await supabase.rpc('validate_exit_pin', {
+      senior_uuid: targetSenior.id,
+      input_pin: pin,
+    });
+    if (error) return { success: false, error: 'Unable to validate PIN' };
+    if (!ok) return { success: false, error: 'Invalid PIN. Please try again.' };
 
     // Set senior session
     setSeniorSession({
